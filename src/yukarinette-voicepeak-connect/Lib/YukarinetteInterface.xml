@@ -1,0 +1,683 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>YukarinetteInterface</name>
+    </assembly>
+    <members>
+        <member name="T:Yukarinette.IYukarinetteFilterInterface">
+            <summary>
+            ゆかりねっとフィルタープラグインインタフェース
+            </summary>
+            <remarks>
+            ゆかりねっとで動作するフィルタープラグインを作成する際に継承をする抽象クラスです。
+            本抽象クラスを継承したクラス全てがフィルタープラグインとして認識されます。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteFilterInterface.Identifier">
+            <summary>
+            プラグイン識別子
+            </summary>
+            <remarks>
+            ゆかりねっと側でプラグインの設定情報を保持するために使用する識別子です。
+            識別子は GUID + 完全修飾クラス名 で生成されます。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteFilterInterface.GUID">
+            <summary>
+            フィルタープラグインGUID
+            </summary>
+            <remarks>
+            フィルタープラグインを一意に認識するために使用します。
+            GUIDはAssemblyInfo.csで宣言された値を自動的に取得するため、フィルタープラグイン開発者は意識をしなくても問題ありません。
+            ただし、１つのDLLに２つ以上のプラグインを作成する場合は個別にGUIDを返却するなどの修正を行ってください。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteFilterInterface.Version">
+            <summary>
+            フィルタープラグインバージョン
+            </summary>
+            <remarks>
+            フィルタープラグインのバージョンを表示するために使用します。
+            バージョンはAssemblyInfo.csで宣言された値を自動的に取得するため、フィルタープラグイン開発者は意識をしなくても問題ありません。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteFilterInterface.Name">
+            <summary>
+            フィルタープラグイン名
+            </summary>
+            <remarks>
+            フィルタープラグインの名前を表示するために使用します。
+            長い名前を指定した場合、ゆかりねっと上では見きれる可能性があります。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteFilterInterface.Loaded">
+            <summary>
+            フィルタープラグインロード時に呼ばれる
+            </summary>
+            <remarks>
+            フィルタープラグインがロードされる際に呼ばれます。ロードはゆかりねっと起動時に一度だけ呼ばれます。
+            本メソッドはメインスレッドで呼び出されます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            フィルタープラグインが実行できない場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示されロードがスキップされます。ロードがスキップされた場合、以後のメソッドは実行されなくなります。
+            </exception>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteFilterInterface.Closed">
+            <summary>
+            アプリケーション終了時に呼ばれる
+            </summary>
+            <remarks>
+            ゆかりねっとが終了する際に呼ばれます。終了時に一度だけ呼ばれます。
+            本メソッドはメインスレッドで呼び出されます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは例外を全て無視します。
+            そのため例外を発生させた段階で本メソッドの処理は終了となるため注意してください。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteFilterInterface.GetSettingUserControl">
+            <summary>
+            フィルタープラグイン選択時に呼ばれる
+            </summary>
+            <remarks>
+            フィルター画面で当フィルタープラグインが選択された場合に呼び出されます。
+            本メソッドで返されるUserControlはフィルター画面の右ペインに表示されます。
+            ユーザーにフィルタープラグイン動作のために必要な設定を行ってもらうために利用します。
+            本メソッドはメインスレッドで呼び出されます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteFilterInterface.Filtering(System.String,Yukarinette.YukarinetteWordDetailData[])">
+            <summary>
+            フィルター処理を実施する。
+            </summary>
+            <remarks>
+            text で渡された音声認識結果に対してフィルター処理を実施し値を返します。
+            words には text を形態素解析した結果が配列で渡されます。データの中身に関しては YukarinetteWordDetailData の Doc を確認してください。
+            words は必要に応じて利用してください。ただし、フィルター結果の戻り値は String となるため、words 準拠でフィオルタリングを行った場合は、words 全ての単語を連結して返却してください。
+            フィルターは同期的に実行されるため処理時間に注意してください。
+            戻り値は YukarinetteFilterPluginResult に格納して返却します。
+            フィルターした文字列は YukarinetteFilterPluginResult.Text に格納します。格納された文字列が空文字または null の場合、ゆかりねっと側はだんまり(喋らないし注意書きもでない)状態となります。
+            また、空文字または null の場合は次のフィルターは実施されません。
+            フィルターした結果、音声認識を全て捨てる必要がある場合は、YukarinetteFilterPluginResult.Type に Nothing を指定します。
+            YukarinetteFilterPluginResult.Type に Nothing が指定された場合は次のフィルターは実施されません。
+            フィルターした結果、動画を流すレベルで乱れている場合は、YukarinetteFilterPluginResult.Type に Movie を指定します。
+            YukarinetteFilterPluginResult.Type に Movie が指定された場合も同様に次のフィルターは実施されません。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            読み上げ時に時に何らかのエラーがある場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示され、後続の読み上げ処理を続行します。
+            </exception>
+            <param name="text">音声認識で取得した文字列</param>
+            <param name="words">音声認識で取得した文字列を形態素解析した結果の単語配列</param>
+            <returns>フィルタープラグイン戻り値</returns>
+        </member>
+        <member name="T:Yukarinette.IYukarinetteInterface">
+            <summary>
+            ゆかりねっとプラグインインタフェース
+            </summary>
+            <remarks>
+            ゆかりねっとで動作するプラグインを作成する際に継承をする抽象クラスです。
+            本抽象クラスを継承したクラス全てがプラグインとして認識されます。
+            </remarks>
+        </member>
+        <member name="T:Yukarinette.IYukarinetteInterface.PluginCreditsMode">
+            <summary>
+            プラグイン字幕モード定数
+            </summary>
+        </member>
+        <member name="F:Yukarinette.IYukarinetteInterface.PluginCreditsMode.NONE">
+            <summary>
+            字幕非表示
+            </summary>
+        </member>
+        <member name="F:Yukarinette.IYukarinetteInterface.PluginCreditsMode.BEFORE">
+            <summary>
+            BeforeSpeech時
+            </summary>
+        </member>
+        <member name="F:Yukarinette.IYukarinetteInterface.PluginCreditsMode.DEFAULT">
+            <summary>
+            Speech時
+            </summary>
+        </member>
+        <member name="F:Yukarinette.IYukarinetteInterface.PluginCreditsMode.AFTER">
+            <summary>
+            AfterSpeech時
+            </summary>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteInterface.Identifier">
+            <summary>
+            プラグイン識別子
+            </summary>
+            <remarks>
+            ゆかりねっと側でプラグインの設定情報を保持するために使用する識別子です。
+            識別子は GUID + 完全修飾クラス名 で生成されます。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteInterface.GUID">
+            <summary>
+            プラグインGUID
+            </summary>
+            <remarks>
+            プラグインを一意に認識するために使用します。
+            GUIDはAssemblyInfo.csで宣言された値を自動的に取得するため、プラグイン開発者は意識をしなくても問題ありません。
+            ただし、１つのDLLに２つ以上のプラグインを作成する場合は個別にGUIDを返却するなどの修正を行ってください。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteInterface.Version">
+            <summary>
+            プラグインバージョン
+            </summary>
+            <remarks>
+            プラグインのバージョンを表示するために使用します。
+            バージョンはAssemblyInfo.csで宣言された値を自動的に取得するため、プラグイン開発者は意識をしなくても問題ありません。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteInterface.Name">
+            <summary>
+            プラグイン名
+            </summary>
+            <remarks>
+            プラグインの名前を表示するために使用します。
+            長い名前を指定した場合、ゆかりねっと上では見きれる可能性があります。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteInterface.Icon">
+            <summary>
+            プラグインアイコン
+            </summary>
+            <remarks>
+            プラグインのアイコン画像を表示するために使用します。アイコン画像は60px×60pxのサイズで表示されます。
+            オーバーライドしない場合はデフォルトのアイコン画像が自動的に割り当てられます。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.IYukarinetteInterface.CreditsMode">
+            <summary>
+            プラグイン字幕モード
+            </summary>
+            <remarks>
+            プラグインの読み上げ時に表示される字幕を制御する際に指定します。
+            デフォルトはSpeech時に字幕が表示されるPluginCreditsMode.DEFAULTを返します。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteInterface.Loaded">
+            <summary>
+            プラグインロード時に呼ばれる
+            </summary>
+            <remarks>
+            プラグインがロードされる際に呼ばれます。ロードはゆかりねっと起動時に一度だけ呼ばれます。
+            本メソッドはメインスレッドで呼び出されます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            プラグインが実行できない場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示されロードがスキップされます。ロードがスキップされた場合、以後のメソッドは実行されなくなります。
+            </exception>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteInterface.Closed">
+            <summary>
+            アプリケーション終了時に呼ばれる
+            </summary>
+            <remarks>
+            ゆかりねっとが終了する際に呼ばれます。終了時に一度だけ呼ばれます。
+            本メソッドはメインスレッドで呼び出されます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは例外を全て無視します。
+            そのため例外を発生させた段階で本メソッドの処理は終了となるため注意してください。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteInterface.Setting">
+            <summary>
+            プラグイン設定により呼ばれる
+            </summary>
+            <remarks>
+            プラグインの設定ボタンから呼び出されます。
+            本メソッドはメインスレッドで呼び出されます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            設定で何らかのエラーがある場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示されます。
+            </exception>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteInterface.SpeechRecognitionStart">
+            <summary>
+            音声認識開始時に呼ばれる
+            </summary>
+            <remarks>
+            プラグインの設定で有効且つ表示状態の場合、音声認識開始時に呼ばれます。
+            本メソッドはメインスレッドで呼び出されます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            音声認識開始時に何らかのエラーがある場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示され、音声認識開始がキャンセルされます。
+            キャンセルされた場合 SpeechRecognitionStop が直に呼びだされます。
+            </exception>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteInterface.SpeechRecognitionStop">
+            <summary>
+            音声認識終了時に呼ばれる
+            </summary>
+            <remarks>
+            プラグインの設定で有効且つ表示状態の場合、音声認識終了時に呼ばれます。
+            本メソッドはメインスレッドで呼び出されます。
+            本メソッドは SpeechRecognitionStart が呼ばれる前に呼ばれる可能性があります。
+            これは他の自分よりも先に呼ばれるプラグインで SpeechRecognitionStart を実行中に YukarinetteException が呼び出された時です。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            音声認識終了時に何らかのエラーがある場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示され、後続のプラグインの終了処理を続行します。
+            </exception>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteInterface.BeforeSpeech(System.String)">
+            <summary>
+            読み上げが行われる前に呼ばれる
+            </summary>
+            <remarks>
+            読み上げ処理の前に何かしらの準備、もしくは、読み上げ処理よりも先に読上げておきたい場合に使用します。
+            本メソッドはサブスレッドにより呼びだされます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            読み上げ時に時に何らかのエラーがある場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示され、後続の読み上げ処理を続行します。
+            </exception>
+            <param name="text">読み上げテキスト</param>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteInterface.Speech(System.String)">
+            <summary>
+            読み上げ時に呼ばれる
+            </summary>
+            <remarks>
+            本プラグインのメインである読み上げ処理となります。
+            本メソッドはサブスレッドにより呼びだされます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            読み上げ時に時に何らかのエラーがある場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示され、後続の読み上げ処理を続行します。
+            </exception>
+            <param name="text">読み上げテキスト</param>
+        </member>
+        <member name="M:Yukarinette.IYukarinetteInterface.AfterSpeech(System.String)">
+            <summary>
+            読み上げが行われた後に呼ばれる
+            </summary>
+            <remarks>
+            読み上げ処理後に相槌等の読み上げを行う場合に使用します。
+            本メソッドはサブスレッドにより呼びだされます。
+            本メソッドで例外を発生させた場合、ゆかりねっとでは「致命的なエラー」として扱い、アプリケーションが強制終了します。
+            ただし、YukarinetteException を発生させた場合はこの通りではありません。詳しくは例外を参照してください。
+            </remarks>
+            <exception cref="T:Yukarinette.YukarinetteException">
+            読み上げ時に時に何らかのエラーがある場合に発生させます。本例外が発生した場合、ゆかりねっとは強制終了せずに
+            メッセージ領域にエラーメッセージが表示され、後続の読み上げ処理を続行します。
+            </exception>
+            <param name="text">読み上げテキスト</param>
+        </member>
+        <member name="T:Yukarinette.YukarinetteCommon">
+            <summary>
+            ゆかりねっとコモンクラス
+            </summary>
+            <remarks>
+            ゆかりねっとで使用する汎用的な設定を取得するためのクラスです。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.YukarinetteCommon.AppSettingFolder">
+            <summary>
+            設定ファイル格納フォルダパスを取得する
+            </summary>
+            <remarks>
+            ゆかりねっとで使用する設定ファイル等のファイル格納フォルダパスを取得します。
+            </remarks>
+        </member>
+        <member name="T:Yukarinette.YukarinetteConsoleMessage">
+            <summary>
+            ゆかりねっとメッセージ出力クラス
+            </summary>
+            <remarks>
+            プラグインからゆかりねっとのメッセージ領域にメッセージを表示する際に使用します。
+            メッセージはいつでも出力可能です。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.YukarinetteConsoleMessage.Instance">
+            <summary>
+            シングルトンインスタンス
+            </summary>
+            <remarks>
+            本クラスはシングルトンで動作します。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.YukarinetteConsoleMessage.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="F:Yukarinette.YukarinetteConsoleMessage.mTextBox">
+            <summary>
+            メッセージを書き込むテキストボックス
+            </summary>
+        </member>
+        <member name="F:Yukarinette.YukarinetteConsoleMessage.mBufferText">
+            <summary>
+            メッセージバッファー
+            </summary>
+        </member>
+        <member name="M:Yukarinette.YukarinetteConsoleMessage.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:Yukarinette.YukarinetteConsoleMessage.Initialize(System.Windows.Controls.RichTextBox)">
+            <summary>
+            コゆかりねっとメッセージ出力クラスを初期化する
+            </summary>
+            <remarks>
+            本メソッドはゆかりねっとから呼び出されるメソッドとなります。
+            そのため、プラグイン側から呼び出すと必ず InvalidOperationException が発生します。
+            </remarks>
+            <exception cref="T:System.InvalidOperationException">
+            プラグイン側から本メソッドを呼び出すと必ず本例外が発生します。
+            </exception>
+            <param name="textBox">メッセージを出力するテキストボックス</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteConsoleMessage.WriteMessage(System.String)">
+            <summary>
+            メッセージを書き込む
+            </summary>
+            <remarks>
+            メッセージをメッセージ領域のテキストボックスに書き込みます。メッセージは最後に自動的に改行が付加されるため、明示的な改行は指定しなくて問題ありません。
+            </remarks>
+            <param name="message">メッセージ</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteConsoleMessage.WriteMessage(Yukarinette.YukarinetteException)">
+            <summary>
+            例外を書き込む
+            </summary>
+            <remarks>
+            例外をメッセージ領域のテキストボックスに書き込みます。例外は Message のみを書き込まれます。
+            </remarks>
+            <param name="ex">例外</param>
+        </member>
+        <member name="T:Yukarinette.YukarinetteFilterPluginResult">
+            <summary>
+            フィルタープラグイン戻り値データ
+            </summary>
+        </member>
+        <member name="T:Yukarinette.YukarinetteFilterPluginResult.FilterResultType">
+            <summary>
+            フィルター戻り値タイプ。
+            </summary>
+        </member>
+        <member name="F:Yukarinette.YukarinetteFilterPluginResult.FilterResultType.Normal">
+            <summary>
+            次のフィルターに遷移されます。
+            </summary>
+        </member>
+        <member name="F:Yukarinette.YukarinetteFilterPluginResult.FilterResultType.Nothing">
+            <summary>
+            字幕画面の中央に注意書きが表示されます。
+            次のフィルターに遷移されません。
+            </summary>
+        </member>
+        <member name="F:Yukarinette.YukarinetteFilterPluginResult.FilterResultType.Movie">
+            <summary>
+            字幕画面に動画が表示されます。
+            次のフィルターに遷移されません。
+            </summary>
+        </member>
+        <member name="P:Yukarinette.YukarinetteFilterPluginResult.Text">
+            <summary>
+            フィルター結果の文字列を格納します。
+            </summary>
+            <remarks>
+            空文字(空白文字のみを含む)が格納されている場合、次のフィルターに遷移されません。
+            また注意書きも表示されません。
+            注意書きを表示するためには Type に Nothing を指定します。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.YukarinetteFilterPluginResult.Type">
+            <summary>
+            フィルタープラグインの戻り値のタイプを指定します。初期値は Normal です。
+            </summary>
+            <remarks>
+            Noraml が指定されている場合、Text に格納された文字列が次のフィルターに渡されます。
+            Nothing が指定されている場合、字幕画面の中央に注意書きが表示されます。次のフィルターに遷移しません。
+            Movie が指定されている場合、字幕画面で動画が再生されます。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.YukarinetteFilterPluginResult.#ctor">
+            <summary>
+            新しいフィルタープラグイン戻り値データを生成する。
+            </summary>
+        </member>
+        <member name="T:Yukarinette.YukarinetteWordDetailData">
+            <summary>
+            形態素解析データ
+            </summary>
+        </member>
+        <member name="P:Yukarinette.YukarinetteWordDetailData.Word">
+            <summary>
+            単語が格納されます。
+            </summary>
+        </member>
+        <member name="P:Yukarinette.YukarinetteWordDetailData.Length">
+            <summary>
+            単語の文字数が格納されます。
+            </summary>
+            <remarks>
+            読みが認識できた場合は読みにおける文字数となります。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.YukarinetteWordDetailData.PosId">
+            <summary>
+            品詞IDとなります。
+            </summary>
+            <remarks>
+            品詞はIPA辞書となります。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.YukarinetteWordDetailData.Reading">
+            <summary>
+            単語の読みが格納されます。
+            </summary>
+            <remarks>
+            読みが認識できなかった場合は、Word と同様の文字列となります。
+            読みが認識できている場合は、全てひらがなの文字列となります。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.YukarinetteWordDetailData.#ctor(System.String,System.Int32,System.UInt16,System.String)">
+            <summary>
+            新しい形態素解析データを生成する。
+            </summary>
+        </member>
+        <member name="T:Yukarinette.YukarinetteException">
+            <summary>
+            ゆかりねっと用例外クラス。
+            </summary>
+        </member>
+        <member name="M:Yukarinette.YukarinetteException.#ctor">
+            <summary>
+            新規 YukarinetteException を生成する
+            </summary>
+        </member>
+        <member name="M:Yukarinette.YukarinetteException.#ctor(System.Object)">
+            <summary>
+            メッセージを利用して新規 YukarinetteException を生成する
+            </summary>
+            <param name="message">メッセージ</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteException.#ctor(System.String,System.Object[])">
+            <summary>
+            複合書式メッセージを利用して新規 YukarinetteException を生成する
+            </summary>
+            <param name="message">複合書式メッセージ</param>
+            <param name="args">複合書式対象オブジェクト</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteException.#ctor(System.Object,System.Exception)">
+            <summary>
+            メッセージと内部例外を利用して新規 YukarinetteException を生成する
+            </summary>
+            <param name="message">メッセージ</param>
+            <param name="inner">内部例外</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteException.#ctor(System.String,System.Exception,System.Object[])">
+            <summary>
+            複合書式メッセージと内部例外を利用して新規 YukarinetteException を生成する
+            </summary>
+            <param name="message">複合書式メッセージ</param>
+            <param name="inner">内部例外</param>
+            <param name="args">複合書式対象オブジェクト</param>
+        </member>
+        <member name="T:Yukarinette.YukarinetteLogger">
+            <summary>
+            ゆかりねっとロガークラス
+            </summary>
+            <remarks>
+            プラグイン側からゆかりねっとが出力しているログファイルにログを出力するためのクラスです。
+            </remarks>
+        </member>
+        <member name="P:Yukarinette.YukarinetteLogger.Instance">
+            <summary>
+            シングルトンインスタンス
+            </summary>
+            <remarks>
+            本クラスはシングルトンで動作します。
+            </remarks>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.#cctor">
+            <summary>
+            静的コンストラクタ
+            </summary>
+        </member>
+        <member name="F:Yukarinette.YukarinetteLogger.mLogger">
+            <summary>
+            ロガー
+            </summary>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.#ctor">
+            <summary>
+            コンストラクタ
+            </summary>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.SetLogger(log4net.ILog)">
+            <summary>
+            ゆかりねっとロガークラスを設定する
+            </summary>
+            <remarks>
+            本メソッドはゆかりねっとから呼び出されるメソッドとなります。
+            そのため、プラグイン側から呼び出すと必ず InvalidOperationException が発生します。
+            </remarks>
+            <exception cref="T:System.InvalidOperationException">
+            プラグイン側から本メソッドを呼び出すと必ず本例外が発生します。
+            </exception>
+            <param name="logger">ロガークラス</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Fatal(System.Object)">
+            <summary>
+            致命的なエラーを書き込む
+            </summary>
+            <remarks>
+            ログに致命的なエラーを書き込みます。
+            </remarks>
+            <param name="message">致命的なエラー</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Fatal(System.Object,System.Exception)">
+            <summary>
+            致命的なエラーを書き込む
+            </summary>
+            <remarks>
+            ログに致命的なエラーと例外を書き込みます。
+            </remarks>
+            <param name="message">致命的なエラー</param>
+            <param name="exception">例外</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Error(System.Object)">
+            <summary>
+            エラーを書き込む
+            </summary>
+            <remarks>
+            ログにエラーを書き込みます。
+            </remarks>
+            <param name="message">エラー</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Error(System.Object,System.Exception)">
+            <summary>
+            エラーを書き込む
+            </summary>
+            <remarks>
+            ログにエラーと例外を書き込みます。
+            </remarks>
+            <param name="message">エラー</param>
+            <param name="exception">例外</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Warn(System.Object)">
+            <summary>
+            警告を書き込む
+            </summary>
+            <remarks>
+            ログに警告を書き込みます。
+            </remarks>
+            <param name="message">警告</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Warn(System.Object,System.Exception)">
+            <summary>
+            警告を書き込む
+            </summary>
+            <remarks>
+            ログに警告と例外を書き込みます。
+            </remarks>
+            <param name="message">警告</param>
+            <param name="exception">例外</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Info(System.Object)">
+            <summary>
+            インフォメーションを書き込む
+            </summary>
+            <remarks>
+            ログにインフォメーションを書き込みます。
+            </remarks>
+            <param name="message">インフォメーション</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Info(System.Object,System.Exception)">
+            <summary>
+            インフォメーションを書き込む
+            </summary>
+            <remarks>
+            ログにインフォメーションと例外を書き込みます。
+            </remarks>
+            <param name="message">インフォメーション</param>
+            <param name="exception">例外</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Debug(System.Object)">
+            <summary>
+            デバッグを書き込む
+            </summary>
+            <remarks>
+            ログにデバッグを書き込みます。
+            </remarks>
+            <param name="message">デバッグ</param>
+        </member>
+        <member name="M:Yukarinette.YukarinetteLogger.Debug(System.Object,System.Exception)">
+            <summary>
+            デバッグを書き込む
+            </summary>
+            <remarks>
+            ログにデバッグと例外を書き込みます。
+            </remarks>
+            <param name="message">デバッグ</param>
+            <param name="exception">例外</param>
+        </member>
+    </members>
+</doc>

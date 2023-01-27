@@ -5,7 +5,9 @@
 
 namespace {
 	const TCHAR* MSG_VP_CONNECT = TEXT("yarukizero-vp-connect");
-	const int VPC_MSG_STARTHOOK = 1;
+	const int VPC_MSG_CALLBACKWND = 1;
+	const int VPC_MSG_ENABLEHOOK = 2;
+	const int VPC_MSG_ENDSPEECH = 3;
 	const int VPC_HOOK_ENABLE = 1;
 	const int VPC_HOOK_DISABLE = 0;
 
@@ -18,6 +20,7 @@ namespace {
 	UINT gs_msgVpConnect = 0;
 	bool gs_isHookAction = false;
 	bool gs_isEndAction = false;
+	HWND gs_hCallBackWnd;
 
 #if false
 	// DLLインジェクション処理
@@ -90,7 +93,10 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK HookWndProc(int code, WPARAM w
 		}
 		if(pcwp->message == ::gs_msgVpConnect) {
 			switch (pcwp->wParam) {
-			case VPC_MSG_STARTHOOK:
+			case VPC_MSG_CALLBACKWND:
+				::gs_hCallBackWnd = reinterpret_cast<HWND>(pcwp->lParam);
+				break;
+			case VPC_MSG_ENABLEHOOK:
 				::gs_isHookAction = pcwp->lParam != VPC_HOOK_DISABLE;
 				::gs_isEndAction = false;
 				break;
@@ -113,9 +119,11 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 			}
 			break;
 		case VP_MSG:
-			if((wParam == VP_MSG_WPARAM) && (lParam == VP_MSG_LPARAM) && !::gs_isEndAction) {
+			if((msg->wParam == VP_MSG_WPARAM) && (msg->lParam == VP_MSG_LPARAM) && gs_isHookAction && !::gs_isEndAction) {
 				::gs_isEndAction = true;
-				// TODO: 音声再生終了処理
+				if(gs_hCallBackWnd) {
+					::PostAppMessage(gs_hCallBackWnd, VPC_MSG_ENDSPEECH, 0, 0);
+				}
 			}
 			break;
 		}

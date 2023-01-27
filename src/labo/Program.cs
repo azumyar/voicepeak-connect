@@ -272,7 +272,7 @@ class Program {
 		IntPtr target,
 		int msg,
 		int clientWidth,
-		string speachText) {
+		string speechText) {
 
 		static void click(IntPtr hwnd, int x, int y) {
 			var pos = x | (y << 16);
@@ -290,10 +290,10 @@ class Program {
 		click(target, 400, 140);
 
 		// テキスト送信
-		foreach (var c in speachText) {
+		foreach (var c in speechText) {
 			SendMessage(target, WM_IME_CHAR, (IntPtr)c, IntPtr.Zero).WriteLine();
 		}
-		Thread.Sleep(50 * speachText.Length);
+		Thread.Sleep(50 * speechText.Length);
 
 		// 再生
 		var dll = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "vocepeak-hook", "bin", "x64", "Debug", "vocepeak-hook.dll");
@@ -302,9 +302,9 @@ class Program {
 		var unhookFunc = Marshal.GetDelegateForFunctionPointer<UnhookVoicePeakProc>(GetProcAddress(hHookDll, "UnhookVoicePeak"));
 
 		hookFunc(target).WriteLine();
-		SendMessage(target, msg, (IntPtr)1, (IntPtr)1).WriteLine();
+		SendMessage(target, msg, (IntPtr)2, (IntPtr)1).WriteLine();
 		click(target, clientWidth / 2 + 165, 20);
-		SendMessage(target, msg, (IntPtr)1, (IntPtr)0).WriteLine();
+		SendMessage(target, msg, (IntPtr)2, (IntPtr)0).WriteLine();
 		unhookFunc(target).WriteLine();
 
 		// 適当に再生終了をまつ
@@ -326,9 +326,9 @@ class Program {
 		//Console.ReadLine();
 #elif true
 		click(target, 400, 140);
-		if(!string.IsNullOrEmpty(speachText)) {
+		if(!string.IsNullOrEmpty(speechText)) {
 			keyboard(target, VK_HOME);
-			foreach(var _ in speachText) {
+			foreach(var _ in speechText) {
 				keyboard(target, VK_DELETE);
 			}
 		}
