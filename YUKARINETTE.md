@@ -16,5 +16,5 @@ https://install.appcenter.ms/users/azumyar/apps/yukerinette-voicepeak-plugin/dis
 6. ゆかりねっとでしゃべるとVOICEPEAKと連携されます
 
 ## 注意
+赤枠の部分は見えている状態にしてください。ここを隠すと連携に失敗します。
 ![注意](md-img/yukarinette01.png)
-赤枠の上は画面に見えている状態にしてください。ここを隠すと連携に失敗します。
