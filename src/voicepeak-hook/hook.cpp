@@ -11,6 +11,10 @@ namespace {
 	const int VPC_HOOK_ENABLE = 1;
 	const int VPC_HOOK_DISABLE = 0;
 
+	// RegisterWindowMessageで登録したメッセージは外部プロセスに飛ばせない？
+
+	const int VPCM_ENDSPEECH = (WM_USER + 3);
+
 	const int VP_MSG = 0x0118;
 	const int VP_MSG_WPARAM = 0x0000FFFF;
 	const int VP_MSG_LPARAM = 0x00000118;
@@ -21,7 +25,8 @@ namespace {
 	bool gs_isHookAction = false;
 	bool gs_isEndAction = false;
 	HWND gs_hCallBackWnd;
-
+	UINT_PTR gs_timer = NULL;
+	ULONGLONG gs_startTime = 0;
 #if false
 	// DLLインジェクション処理
 	WNDPROC pVpProc;
@@ -65,6 +70,17 @@ namespace {
 		return TRUE;
 	}
 #endif
+	void TimerProc(HWND hWnd, UINT uMsg, UINT_PTR nIDEvent, DWORD dwTime) {
+		if(!::gs_isEndAction) {
+			::gs_isEndAction = true;
+
+			::KillTimer(hWnd, ::gs_timer);
+			::gs_timer = NULL;
+			if(::gs_hCallBackWnd) {
+				::PostMessage(::gs_hCallBackWnd, ::VPCM_ENDSPEECH, 0, 0);
+			}
+		}
+	}
 }
 
 #if false
@@ -92,13 +108,14 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK HookWndProc(int code, WPARAM w
 			::gs_msgVpConnect = ::RegisterWindowMessage(MSG_VP_CONNECT);
 		}
 		if(pcwp->message == ::gs_msgVpConnect) {
-			switch (pcwp->wParam) {
+			switch(pcwp->wParam) {
 			case VPC_MSG_CALLBACKWND:
 				::gs_hCallBackWnd = reinterpret_cast<HWND>(pcwp->lParam);
 				break;
 			case VPC_MSG_ENABLEHOOK:
 				::gs_isHookAction = pcwp->lParam != VPC_HOOK_DISABLE;
 				::gs_isEndAction = false;
+				::gs_startTime = ::gs_isHookAction ? ::GetTickCount64() : 0;
 				break;
 			}
 			pcwp->message = WM_NULL;
@@ -109,8 +126,24 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK HookWndProc(int code, WPARAM w
 
 extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM wParam, LPARAM lParam) {
 	if(code == HC_ACTION) {
+		if (!::gs_msgVpConnect) {
+			::gs_msgVpConnect = ::RegisterWindowMessage(MSG_VP_CONNECT);
+		}
+
 		auto msg = reinterpret_cast<MSG*>(lParam);
-		switch(msg->message) {
+		if(msg->message == ::gs_msgVpConnect) {
+			switch(msg->wParam) {
+			case VPC_MSG_CALLBACKWND:
+				::gs_hCallBackWnd = reinterpret_cast<HWND>(msg->lParam);
+				break;
+			case VPC_MSG_ENABLEHOOK:
+				::gs_isHookAction = msg->lParam != VPC_HOOK_DISABLE;
+				::gs_isEndAction = false;
+				::gs_startTime = ::gs_isHookAction ? ::GetTickCount64() : 0;
+				break;
+			}
+			msg->message = WM_NULL;
+		} else switch(msg->message) {
 		// 処理中マウスが対象にいないため WM_MOUSELEAVE が来る
 		// 握りつぶす
 		case WM_MOUSELEAVE:
@@ -118,30 +151,50 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 				msg->message = WM_NULL;
 			}
 			break;
+		/*
 		case VP_MSG:
 			if((msg->wParam == VP_MSG_WPARAM) && (msg->lParam == VP_MSG_LPARAM) && gs_isHookAction && !::gs_isEndAction) {
 				::gs_isEndAction = true;
 				if(gs_hCallBackWnd) {
-					::PostAppMessage(gs_hCallBackWnd, VPC_MSG_ENDSPEECH, 0, 0);
+					::PostMessage(gs_hCallBackWnd, VPC_MSG_ENDSPEECH, 0, 0);
 				}
+			}
+			break;
+		*/
+		case WM_PAINT:
+			if(::gs_isHookAction && !::gs_isEndAction) {
+				/*
+				if((::GetTickCount64() - ::gs_startTime) < 500) {
+					break;
+				}
+				*/
+				if(::gs_timer) {
+					::KillTimer(msg->hwnd, ::gs_timer);
+					::gs_timer = NULL;
+				}
+				::gs_timer = ::SetTimer(msg->hwnd, 0, 1000, ::TimerProc);
 			}
 			break;
 		}
 	}
-	return CallNextHookEx(gs_hMsgHook, code, wParam, lParam);
+	return CallNextHookEx(::gs_hMsgHook, code, wParam, lParam);
 }
 
 extern "C" __declspec(dllexport) bool WINAPI HookVoicePeak(HWND hVoicePeak) {
+	/*
 	::gs_hHook = ::SetWindowsHookEx(
 		WH_CALLWNDPROC,
 		reinterpret_cast<HOOKPROC>(HookWndProc),
 		::g_module,
 		0);
+	*/
 	::gs_hMsgHook = ::SetWindowsHookEx(
 		WH_GETMESSAGE,
 		reinterpret_cast<HOOKPROC>(MsgHookProc),
 		::g_module,
 		0);
+	return ::gs_hMsgHook;
+
 	if(::gs_hHook && ::gs_hMsgHook) {
 		return true;
 	} else {
@@ -158,11 +211,11 @@ extern "C" __declspec(dllexport) bool WINAPI HookVoicePeak(HWND hVoicePeak) {
 }
 
 extern "C" __declspec(dllexport) bool WINAPI UnhookVoicePeak() {
-	if(!::gs_hHook) {
+	if(!::gs_hMsgHook) {
 		return true;
 	}
 
-	::UnhookWindowsHookEx(::gs_hHook);
+	//::UnhookWindowsHookEx(::gs_hHook);
 	::UnhookWindowsHookEx(::gs_hMsgHook);
 	::gs_hHook = NULL;
 	::gs_hMsgHook = NULL;

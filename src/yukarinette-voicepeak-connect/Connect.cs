@@ -65,21 +65,29 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private const int VPC_HOOK_ENABLE = 1;
 		private const int VPC_HOOK_DISABLE = 0;
 
+		private const int WM_USER = 0x400;
+		private const int VPCM_ENDSPEECH = (WM_USER + 3);
 
 		class MessageForm : Form {
-			private readonly AutoResetEvent sync;
+			private readonly Connect con;
 
-			public MessageForm(AutoResetEvent sync) {
-				this.sync = sync;
+			public MessageForm(Connect con) {
+				this.con = con;
 				this.ShowInTaskbar = false;
 				this.Opacity = 0;
+				this.Text = "voicepeak-connect";
+			}
+
+			protected override async void OnLoad(EventArgs e) {
+				base.OnLoad(e);
+
+				await Task.Delay(100);
+				this.Hide();
 			}
 
 			protected override void WndProc(ref Message m) {
-				switch(m.Msg) {
-				case VPC_MSG_ENDSPEECH:
-					this.sync.Reset();
-					break;
+				if(m.Msg == VPCM_ENDSPEECH) {
+					this.con.sync.Set();
 				}
 				base.WndProc(ref m);
 			}
@@ -99,8 +107,11 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private int voicePeakWidth;
 
 		public Connect() {
-			this.form = new MessageForm(this.sync);
 			this.connectionMsg = RegisterWindowMessage("yarukizero-vp-connect");
+
+			this.form = new MessageForm(this);
+			this.form.Show();
+			this.formHandle = this.form.Handle;
 		}
 
 		public void Dispose() {
@@ -108,10 +119,6 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		}
 
 		public bool BeginSpeech() {
-			if(!this.form.IsHandleCreated) {
-				this.form.Show();
-				this.formHandle = this.form.Handle;
-			}
 			return true;
 		}
 
@@ -159,9 +166,7 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 
 			static void keyboard(IntPtr hwnd, int keycode) {
 				PostMessage(hwnd, WM_KEYDOWN, (IntPtr)keycode, (IntPtr)(0x000000001));
-				Thread.Sleep(50);
 				PostMessage(hwnd, WM_KEYUP, (IntPtr)keycode, (IntPtr)0xC00000001);
-				Thread.Sleep(100);
 			}
 
 			click(this.hVoicePeak, 400, 140);
@@ -169,21 +174,23 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 				SendMessage(this.hVoicePeak, WM_IME_CHAR, (IntPtr)c, IntPtr.Zero);
 			}
 			Thread.Sleep(50 * text.Length);
+			keyboard(this.hVoicePeak, VK_HOME);
 
 			this.hookFunc(this.hVoicePeak);
-			SendMessage(
+			PostMessage(
 				this.hVoicePeak, this.connectionMsg,
 				(IntPtr)VPC_MSG_CALLBACKWND,
 				this.formHandle);
-			SendMessage(
+			PostMessage(
 				this.hVoicePeak, this.connectionMsg,
 				(IntPtr)VPC_MSG_ENABLEHOOK,
 				(IntPtr)VPC_HOOK_ENABLE);
+			click(this.hVoicePeak, this.voicePeakWidth / 2 + 125, 20);
 			click(this.hVoicePeak, this.voicePeakWidth / 2 + 165, 20);
 
-			this.sync.WaitOne(5000); // フリーズ防止のため5秒で解除する
+			this.sync.WaitOne(20000); // フリーズ防止のため20秒で解除する
 
-			SendMessage(this.hVoicePeak, this.connectionMsg,
+			PostMessage(this.hVoicePeak, this.connectionMsg,
 				(IntPtr)VPC_MSG_ENABLEHOOK,
 				(IntPtr)VPC_HOOK_DISABLE);
 			unhookFunc(this.hVoicePeak);

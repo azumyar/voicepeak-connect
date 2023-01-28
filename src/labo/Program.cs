@@ -282,9 +282,9 @@ class Program {
 
 		static void keyboard(IntPtr hwnd, int keycode) {
 			PostMessage(hwnd, WM_KEYDOWN, (IntPtr)keycode, (IntPtr)(0x000000001));
-			Thread.Sleep(50);
+			//Thread.Sleep(50);
 			PostMessage(hwnd, WM_KEYUP, (IntPtr)keycode, (IntPtr)0xC00000001);
-			Thread.Sleep(100);
+			//Thread.Sleep(100);
 		}
 
 		click(target, 400, 140);
@@ -296,13 +296,14 @@ class Program {
 		Thread.Sleep(50 * speechText.Length);
 
 		// 再生
-		var dll = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "vocepeak-hook", "bin", "x64", "Debug", "vocepeak-hook.dll");
+		var dll = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "voicepeak-hook", "bin", "x64", "Debug", "voicepeak-hook.dll");
 		var hHookDll = LoadLibrary(dll);
 		var hookFunc = Marshal.GetDelegateForFunctionPointer<HookVoicePeakProc>(GetProcAddress(hHookDll, "HookVoicePeak"));
 		var unhookFunc = Marshal.GetDelegateForFunctionPointer<UnhookVoicePeakProc>(GetProcAddress(hHookDll, "UnhookVoicePeak"));
 
 		hookFunc(target).WriteLine();
 		SendMessage(target, msg, (IntPtr)2, (IntPtr)1).WriteLine();
+		click(target, clientWidth / 2 + 125, 20);
 		click(target, clientWidth / 2 + 165, 20);
 		SendMessage(target, msg, (IntPtr)2, (IntPtr)0).WriteLine();
 		unhookFunc(target).WriteLine();

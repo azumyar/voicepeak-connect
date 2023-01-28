@@ -11,11 +11,14 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private Connect con = null;
 		private System.Media.SoundPlayer player;
 
+		public override void Loaded() {
+			if(con == null) {
+				con = new Connect();
+			}
+		}
+
 		public override void SpeechRecognitionStart() {
 			try {
-				if(con == null) {
-					con = new Connect();
-				}
 				if(!con.BeginSpeech()) {
 					throw new YukarinetteException("スピーチ初期化に失敗しました");
 				}
