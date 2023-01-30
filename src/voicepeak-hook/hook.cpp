@@ -5,9 +5,11 @@
 
 namespace {
 	const TCHAR* MSG_VP_CONNECT = TEXT("yarukizero-vp-connect");
+	const TCHAR* FILENAME_HOOK2 = TEXT("yarukizero-vp-connect.hook2");
 	const int VPC_MSG_CALLBACKWND = 1;
 	const int VPC_MSG_ENABLEHOOK = 2;
 	const int VPC_MSG_ENDSPEECH = 3;
+	const int VPC_MSG_ENABLEHOOK2 = 4;
 	const int VPC_HOOK_ENABLE = 1;
 	const int VPC_HOOK_DISABLE = 0;
 
@@ -25,10 +27,18 @@ namespace {
 	HHOOK gs_hMsgHook = NULL;
 	UINT gs_msgVpConnect = 0;
 	bool gs_isHookAction = false;
+	bool gs_isStartAction = false;
+	bool gs_isStartSpeach = false;
 	bool gs_isEndAction = false;
 	HWND gs_hCallBackWnd;
 	UINT_PTR gs_timer = NULL;
 	ULONGLONG gs_startTime = 0;
+
+	inline void click(HWND hwnd, int x, int y) {
+		PostMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+		PostMessage(hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+	}
+
 #if false
 	// DLLインジェクション処理
 	WNDPROC pVpProc;
@@ -72,12 +82,31 @@ namespace {
 		return TRUE;
 	}
 #endif
-	void TimerProc(HWND hWnd, UINT uMsg, UINT_PTR nIDEvent, DWORD dwTime) {
-		if(!::gs_isEndAction) {
+	void WaitTimerProc(HWND hWnd, UINT uMsg, UINT_PTR nIDEvent, DWORD dwTime) {
+		::KillTimer(hWnd, ::gs_timer);
+		::gs_timer = NULL;
+
+		if (!::gs_isStartAction) {
+			::gs_isStartAction = true;
+			// フォーカスを削除してカーソルのWM_PAINTを抑制する
+			::PostMessage(hWnd, WM_KILLFOCUS, 0, 0);
+		}
+	}
+
+	void SpeechTimerProc(HWND hWnd, UINT uMsg, UINT_PTR nIDEvent, DWORD dwTime) {
+		::KillTimer(hWnd, ::gs_timer);
+		::gs_timer = NULL;
+
+		if(!::gs_isStartSpeach) {
+			::gs_isStartSpeach = true;
+			RECT rc = { 0 };
+			::GetClientRect(hWnd, &rc);
+			auto w = rc.right - rc.left;
+			::click(hWnd, w / 2 + 125, 20);
+			::click(hWnd, w / 2 + 165, 20);
+		} else if(!::gs_isEndAction) {
 			::gs_isEndAction = true;
 
-			::KillTimer(hWnd, ::gs_timer);
-			::gs_timer = NULL;
 			if(::gs_hCallBackWnd) {
 				::PostMessage(::gs_hCallBackWnd, ::VPCM_ENDSPEECH, 0, 0);
 			}
@@ -109,8 +138,39 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK HookWndProc(int code, WPARAM w
 		if(!::gs_msgVpConnect) {
 			::gs_msgVpConnect = ::RegisterWindowMessage(MSG_VP_CONNECT);
 		}
-		if(pcwp->message == ::gs_msgVpConnect) {
-			// 今使っていない
+		if (pcwp->message == ::gs_msgVpConnect) {
+			switch (pcwp->wParam) {
+			case VPC_MSG_ENABLEHOOK2:
+				{
+					auto hMapObj = CreateFileMapping(
+						reinterpret_cast<HANDLE>(-1),
+						0, PAGE_READONLY, 0, 2048,
+						FILENAME_HOOK2);
+					if(hMapObj && (GetLastError() == ERROR_ALREADY_EXISTS)) {
+						auto speech = reinterpret_cast<PCWCHAR>(::MapViewOfFile(hMapObj, FILE_MAP_READ, 0, 0, 0));
+						if(speech) {
+							::gs_isHookAction = true;
+							::gs_isStartAction = false;
+							::gs_isStartSpeach = false;
+							::gs_isEndAction = false;
+							::gs_startTime = ::gs_isHookAction ? ::GetTickCount64() : 0;
+
+							auto len = ::lstrlenW(speech);
+							::click(pcwp->hwnd, 400, 140);
+							for(auto i = 0; i < len; i++) {
+								::SendMessage(pcwp->hwnd, WM_IME_CHAR, speech[i], 0);
+							}
+							::PostMessage(pcwp->hwnd, WM_KEYDOWN, VK_HOME, 0x000000001);
+							::PostMessage(pcwp->hwnd, WM_KEYUP, VK_HOME, 0xC00000001);
+							::gs_timer = ::SetTimer(pcwp->hwnd, 0, 500, ::WaitTimerProc);
+
+							::UnmapViewOfFile(speech);
+						}
+						::CloseHandle(hMapObj);
+					}
+				}
+				break;
+			}
 			pcwp->message = WM_NULL;
 		}
 	}
@@ -131,6 +191,8 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 				break;
 			case VPC_MSG_ENABLEHOOK:
 				::gs_isHookAction = msg->lParam != VPC_HOOK_DISABLE;
+				::gs_isStartAction = true;
+				::gs_isStartSpeach = true;
 				::gs_isEndAction = false;
 				::gs_startTime = ::gs_isHookAction ? ::GetTickCount64() : 0;
 				break;
@@ -145,7 +207,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 			}
 			break;
 		case WM_PAINT:
-			if(::gs_isHookAction && !::gs_isEndAction) {
+			if(::gs_isHookAction && ::gs_isStartAction && (!::gs_isStartSpeach || !::gs_isEndAction)) {
 				/*
 				if((::GetTickCount64() - ::gs_startTime) < 500) {
 					break;
@@ -155,7 +217,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 					::KillTimer(msg->hwnd, ::gs_timer);
 					::gs_timer = NULL;
 				}
-				::gs_timer = ::SetTimer(msg->hwnd, 0, 1000, ::TimerProc);
+				::gs_timer = ::SetTimer(msg->hwnd, 0, 1000, ::SpeechTimerProc);
 			}
 			break;
 		}
@@ -164,20 +226,17 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 }
 
 extern "C" __declspec(dllexport) bool WINAPI HookVoicePeak(HWND hVoicePeak) {
-	/*
 	::gs_hWndHook = ::SetWindowsHookEx(
 		WH_CALLWNDPROC,
 		reinterpret_cast<HOOKPROC>(HookWndProc),
 		::g_module,
 		0);
-	*/
 	::gs_hMsgHook = ::SetWindowsHookEx(
 		WH_GETMESSAGE,
 		reinterpret_cast<HOOKPROC>(MsgHookProc),
 		::g_module,
 		0);
-	return ::gs_hMsgHook;
-	/*
+	//return ::gs_hMsgHook;
 	if(::gs_hWndHook && ::gs_hMsgHook) {
 		return true;
 	} else {
@@ -191,7 +250,6 @@ extern "C" __declspec(dllexport) bool WINAPI HookVoicePeak(HWND hVoicePeak) {
 		}
 		return false;
 	}
-	*/
 }
 
 extern "C" __declspec(dllexport) bool WINAPI UnhookVoicePeak() {
@@ -199,7 +257,7 @@ extern "C" __declspec(dllexport) bool WINAPI UnhookVoicePeak() {
 		return true;
 	}
 
-	//::UnhookWindowsHookEx(::gs_hHook);
+	::UnhookWindowsHookEx(::gs_hWndHook);
 	::UnhookWindowsHookEx(::gs_hMsgHook);
 	::gs_hWndHook = NULL;
 	::gs_hMsgHook = NULL;

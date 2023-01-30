@@ -1,6 +1,5 @@
 using Yukarinette;
 using System;
-using System.Windows.Forms;
 using System.Numerics;
 using System.Resources;
 using System.IO;

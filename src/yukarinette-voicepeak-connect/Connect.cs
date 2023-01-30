@@ -34,6 +34,18 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
 		private static extern int GetPrivateProfileInt(string lpAppName, string lpKeyName, int nDefault, string lpFileName);
 
+		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+		private static extern IntPtr CreateFileMapping(IntPtr hFile, IntPtr lpFileMappingAttributes, int flProtect, int dwMaximumSizeHigh, int dwMaximumSizeLow, string lpName);
+		[DllImport("kernel32.dll")]
+		private static extern IntPtr MapViewOfFile(IntPtr hFileMappingObject, int dwDesiredAccess, int dwFileOffsetHigh, int dwFileOffsetLow, IntPtr dwNumberOfBytesToMap);
+		[DllImport("kernel32.dll")]
+		private static extern IntPtr UnmapViewOfFile(IntPtr hFileMappingObject);
+		[DllImport("kernel32.dll")]
+		private static extern IntPtr CloseHandle(IntPtr hObject);
+		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+		private static extern IntPtr lstrcpy(IntPtr str1, string str2);
+
+
 		private const int WM_LBUTTONDOWN = 0x201;
 		private const int WM_LBUTTONUP = 0x202;
 		private const int WM_KEYDOWN = 0x0100;
@@ -42,6 +54,9 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private const int MK_LBUTTON = 0x01;
 		private const int VK_HOME = 0x24;
 		private const int VK_DELETE = 0x2E;
+
+		private const int PAGE_READWRITE = 0x04;
+		private const int FILE_MAP_WRITE = 0x00000002;
 
 		[StructLayout(LayoutKind.Sequential)]
 		struct POINT {
@@ -62,11 +77,14 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private const int VPC_MSG_CALLBACKWND = 1;
 		private const int VPC_MSG_ENABLEHOOK = 2;
 		private const int VPC_MSG_ENDSPEECH = 3;
+		private const int VPC_MSG_ENABLEHOOK2 = 4;
 		private const int VPC_HOOK_ENABLE = 1;
 		private const int VPC_HOOK_DISABLE = 0;
 
 		private const int WM_USER = 0x400;
 		private const int VPCM_ENDSPEECH = (WM_USER + VPC_MSG_ENDSPEECH);
+		private readonly string VpConnectMessage = "yarukizero-vp-connect";
+		private readonly string MapNameHokk2 = "yarukizero-vp-connect.hook2";
 
 		class MessageWindow : System.Windows.Window {
 			private readonly Connect con;
@@ -118,7 +136,7 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private readonly int defaultWaitSec = 50;
 
 		public Connect() {
-			this.connectionMsg = RegisterWindowMessage("yarukizero-vp-connect");
+			this.connectionMsg = RegisterWindowMessage(VpConnectMessage);
 			this.dllPath = Path.Combine(
 				AppDomain.CurrentDomain.BaseDirectory,
 				"Plugins",
@@ -182,24 +200,23 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 				PostMessage(hwnd, WM_KEYUP, (IntPtr)keycode, (IntPtr)0xC00000001);
 			}
 
-			click(this.hVoicePeak, 400, 140);
-			foreach(var c in text) {
-				SendMessage(this.hVoicePeak, WM_IME_CHAR, (IntPtr)c, IntPtr.Zero);
-			}
-			Thread.Sleep(50 * text.Length);
-			keyboard(this.hVoicePeak, VK_HOME);
-
 			this.hookFunc(this.hVoicePeak);
 			PostMessage(
 				this.hVoicePeak, this.connectionMsg,
 				(IntPtr)VPC_MSG_CALLBACKWND,
 				this.formHandle);
-			PostMessage(
+
+			var hMapObj = CreateFileMapping(
+				(IntPtr)(-1), IntPtr.Zero, PAGE_READWRITE,
+				0, text.Length * 2 + 2,
+				MapNameHokk2);
+			var ptr = MapViewOfFile(hMapObj, FILE_MAP_WRITE, 0, 0, IntPtr.Zero);
+			lstrcpy(ptr, text);
+			UnmapViewOfFile(ptr);
+			SendMessage(
 				this.hVoicePeak, this.connectionMsg,
-				(IntPtr)VPC_MSG_ENABLEHOOK,
-				(IntPtr)VPC_HOOK_ENABLE);
-			click(this.hVoicePeak, this.voicePeakWidth / 2 + 125, 20);
-			click(this.hVoicePeak, this.voicePeakWidth / 2 + 165, 20);
+				(IntPtr)VPC_MSG_ENABLEHOOK2,
+				IntPtr.Zero);
 
 			{
 				var waitSec = GetPrivateProfileInt(
@@ -209,10 +226,12 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 					this.iniPath);
 				this.sync.WaitOne(waitSec * 1000); // フリーズ防止のためデフォルト50秒で解除する
 			}
+
 			PostMessage(this.hVoicePeak, this.connectionMsg,
 				(IntPtr)VPC_MSG_ENABLEHOOK,
 				(IntPtr)VPC_HOOK_DISABLE);
 			this.unhookFunc(this.hVoicePeak);
+			CloseHandle(hMapObj);
 
 			click(this.hVoicePeak, 400, 140);
 			if(!string.IsNullOrEmpty(text)) {
