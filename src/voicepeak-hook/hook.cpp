@@ -13,13 +13,15 @@ namespace {
 
 	// RegisterWindowMessageで登録したメッセージは外部プロセスに飛ばせない？
 
-	const int VPCM_ENDSPEECH = (WM_USER + 3);
+	const int VPCM_ENDSPEECH = (WM_USER + VPC_MSG_ENDSPEECH);
 
+	/* なんかVOICEPEAK内で流れてくるメッセージ
 	const int VP_MSG = 0x0118;
 	const int VP_MSG_WPARAM = 0x0000FFFF;
 	const int VP_MSG_LPARAM = 0x00000118;
+	*/
 
-	HHOOK gs_hHook = NULL;
+	HHOOK gs_hWndHook = NULL;
 	HHOOK gs_hMsgHook = NULL;
 	UINT gs_msgVpConnect = 0;
 	bool gs_isHookAction = false;
@@ -108,20 +110,11 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK HookWndProc(int code, WPARAM w
 			::gs_msgVpConnect = ::RegisterWindowMessage(MSG_VP_CONNECT);
 		}
 		if(pcwp->message == ::gs_msgVpConnect) {
-			switch(pcwp->wParam) {
-			case VPC_MSG_CALLBACKWND:
-				::gs_hCallBackWnd = reinterpret_cast<HWND>(pcwp->lParam);
-				break;
-			case VPC_MSG_ENABLEHOOK:
-				::gs_isHookAction = pcwp->lParam != VPC_HOOK_DISABLE;
-				::gs_isEndAction = false;
-				::gs_startTime = ::gs_isHookAction ? ::GetTickCount64() : 0;
-				break;
-			}
+			// 今使っていない
 			pcwp->message = WM_NULL;
 		}
 	}
-	return CallNextHookEx(gs_hHook, code, wParam, lParam);
+	return CallNextHookEx(::gs_hWndHook, code, wParam, lParam);
 }
 
 extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM wParam, LPARAM lParam) {
@@ -151,16 +144,6 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 				msg->message = WM_NULL;
 			}
 			break;
-		/*
-		case VP_MSG:
-			if((msg->wParam == VP_MSG_WPARAM) && (msg->lParam == VP_MSG_LPARAM) && gs_isHookAction && !::gs_isEndAction) {
-				::gs_isEndAction = true;
-				if(gs_hCallBackWnd) {
-					::PostMessage(gs_hCallBackWnd, VPC_MSG_ENDSPEECH, 0, 0);
-				}
-			}
-			break;
-		*/
 		case WM_PAINT:
 			if(::gs_isHookAction && !::gs_isEndAction) {
 				/*
@@ -182,7 +165,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 
 extern "C" __declspec(dllexport) bool WINAPI HookVoicePeak(HWND hVoicePeak) {
 	/*
-	::gs_hHook = ::SetWindowsHookEx(
+	::gs_hWndHook = ::SetWindowsHookEx(
 		WH_CALLWNDPROC,
 		reinterpret_cast<HOOKPROC>(HookWndProc),
 		::g_module,
@@ -194,20 +177,21 @@ extern "C" __declspec(dllexport) bool WINAPI HookVoicePeak(HWND hVoicePeak) {
 		::g_module,
 		0);
 	return ::gs_hMsgHook;
-
-	if(::gs_hHook && ::gs_hMsgHook) {
+	/*
+	if(::gs_hWndHook && ::gs_hMsgHook) {
 		return true;
 	} else {
-		if(::gs_hHook) {
-			::UnhookWindowsHookEx(gs_hHook);
-			::gs_hHook = NULL;
+		if(::gs_hWndHook) {
+			::UnhookWindowsHookEx(::gs_hWndHook);
+			::gs_hWndHook = NULL;
 		}
 		if(::gs_hMsgHook) {
-			::UnhookWindowsHookEx(gs_hMsgHook);
+			::UnhookWindowsHookEx(::gs_hMsgHook);
 			::gs_hMsgHook = NULL;
 		}
 		return false;
 	}
+	*/
 }
 
 extern "C" __declspec(dllexport) bool WINAPI UnhookVoicePeak() {
@@ -217,7 +201,7 @@ extern "C" __declspec(dllexport) bool WINAPI UnhookVoicePeak() {
 
 	//::UnhookWindowsHookEx(::gs_hHook);
 	::UnhookWindowsHookEx(::gs_hMsgHook);
-	::gs_hHook = NULL;
+	::gs_hWndHook = NULL;
 	::gs_hMsgHook = NULL;
 
 	return true;

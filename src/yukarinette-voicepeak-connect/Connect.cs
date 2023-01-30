@@ -66,7 +66,7 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private const int VPC_HOOK_DISABLE = 0;
 
 		private const int WM_USER = 0x400;
-		private const int VPCM_ENDSPEECH = (WM_USER + 3);
+		private const int VPCM_ENDSPEECH = (WM_USER + VPC_MSG_ENDSPEECH);
 
 		class MessageForm : Form {
 			private readonly Connect con;
@@ -116,10 +116,6 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 
 		public void Dispose() {
 			this.form?.Dispose();
-		}
-
-		public bool BeginSpeech() {
-			return true;
 		}
 
 		public bool BeginHook() {
@@ -188,7 +184,7 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 			click(this.hVoicePeak, this.voicePeakWidth / 2 + 125, 20);
 			click(this.hVoicePeak, this.voicePeakWidth / 2 + 165, 20);
 
-			this.sync.WaitOne(20000); // フリーズ防止のため20秒で解除する
+			this.sync.WaitOne(20 * 1000); // フリーズ防止のため20秒で解除する
 
 			PostMessage(this.hVoicePeak, this.connectionMsg,
 				(IntPtr)VPC_MSG_ENABLEHOOK,

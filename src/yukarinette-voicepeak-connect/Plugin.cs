@@ -19,9 +19,6 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 
 		public override void SpeechRecognitionStart() {
 			try {
-				if(!con.BeginSpeech()) {
-					throw new YukarinetteException("スピーチ初期化に失敗しました");
-				}
 				if(!con.BeginHook()) {
 					throw new YukarinetteException("コンポーネントが見つからないあるいは不正");
 				}
