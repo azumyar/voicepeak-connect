@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
@@ -12,11 +12,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\icon.png" />
     <EmbeddedResource Include="Resources\vp-notfound.wav" />
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Windows" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Presentation" />
+    <Reference Include="WindowsBase" />
     <Reference Include="YukarinetteInterface">
       <HintPath>Lib\YukarinetteInterface.dll</HintPath>
     </Reference>

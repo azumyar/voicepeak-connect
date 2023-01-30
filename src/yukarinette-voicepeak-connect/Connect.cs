@@ -6,8 +6,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Windows.Forms.VisualStyles;
 
 namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 	internal class Connect : IDisposable {
@@ -33,6 +31,8 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		[DllImport("user32.dll")]
 		private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, int uFlags);
 
+		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+		private static extern int GetPrivateProfileInt(string lpAppName, string lpKeyName, int nDefault, string lpFileName);
 
 		private const int WM_LBUTTONDOWN = 0x201;
 		private const int WM_LBUTTONUP = 0x202;
@@ -68,35 +68,42 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private const int WM_USER = 0x400;
 		private const int VPCM_ENDSPEECH = (WM_USER + VPC_MSG_ENDSPEECH);
 
-		class MessageForm : Form {
+		class MessageWindow : System.Windows.Window {
 			private readonly Connect con;
+			private System.Windows.Interop.HwndSource source;
 
-			public MessageForm(Connect con) {
+			public IntPtr Handle { get; }
+
+			public MessageWindow(Connect con) {
 				this.con = con;
 				this.ShowInTaskbar = false;
 				this.Opacity = 0;
-				this.Text = "voicepeak-connect";
+				this.Title = "voicepeak-connect";
+
+
+				var helper = new System.Windows.Interop.WindowInteropHelper(this);
+				this.Handle = helper.EnsureHandle();
+				this.source = System.Windows.Interop.HwndSource.FromHwnd(helper.Handle);
+				this.source.AddHook(WndProc);
+				this.Loaded += async (_, _) => {
+					await Task.Delay(100);
+					this.Hide();
+				};
 			}
 
-			protected override async void OnLoad(EventArgs e) {
-				base.OnLoad(e);
-
-				await Task.Delay(100);
-				this.Hide();
-			}
-
-			protected override void WndProc(ref Message m) {
-				if(m.Msg == VPCM_ENDSPEECH) {
+			private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled) {
+				if(msg == VPCM_ENDSPEECH) {
 					this.con.sync.Set();
+					handled = true;
 				}
-				base.WndProc(ref m);
+				return IntPtr.Zero;
 			}
 		}
 
 		private readonly AutoResetEvent sync = new AutoResetEvent(false);
 
 		private int connectionMsg;
-		private MessageForm form;
+		private MessageWindow window;
 		private IntPtr formHandle;
 
 		private IntPtr hHookModule;
@@ -106,26 +113,36 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 		private IntPtr hVoicePeak;
 		private int voicePeakWidth;
 
+		private readonly string dllPath;
+		private readonly string iniPath;
+		private readonly int defaultWaitSec = 50;
+
 		public Connect() {
 			this.connectionMsg = RegisterWindowMessage("yarukizero-vp-connect");
+			this.dllPath = Path.Combine(
+				AppDomain.CurrentDomain.BaseDirectory,
+				"Plugins",
+				"Yarukizero.Net.VoicePeakConnect",
+				"voicepeak-hook.dll");
+			this.iniPath = Path.Combine(
+				AppDomain.CurrentDomain.BaseDirectory,
+				"Plugins",
+				"Yarukizero.Net.VoicePeakConnect",
+				"voicepeak-connet.ini");
 
-			this.form = new MessageForm(this);
-			this.form.Show();
-			this.formHandle = this.form.Handle;
+			this.window = new MessageWindow(this);
+			this.window.Show();
+			this.formHandle = this.window.Handle;
 		}
 
 		public void Dispose() {
-			this.form?.Dispose();
+			this.window?.Close();
 		}
 
 		public bool BeginHook() {
 			if(this.hHookModule == IntPtr.Zero) {
 				try {
-					this.hHookModule = LoadLibrary(
-						Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-						"Plugins",
-						"Yarukizero.Net.VoicePeakConnect",
-						"voicepeak-hook.dll"));
+					this.hHookModule = LoadLibrary(this.dllPath);
 					this.hookFunc = Marshal.GetDelegateForFunctionPointer<HookVoicePeakProc>(GetProcAddress(this.hHookModule, "HookVoicePeak"));
 					this.unhookFunc = Marshal.GetDelegateForFunctionPointer<UnhookVoicePeakProc>(GetProcAddress(this.hHookModule, "UnhookVoicePeak"));
 				}
@@ -184,18 +201,27 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 			click(this.hVoicePeak, this.voicePeakWidth / 2 + 125, 20);
 			click(this.hVoicePeak, this.voicePeakWidth / 2 + 165, 20);
 
-			this.sync.WaitOne(20 * 1000); // フリーズ防止のため20秒で解除する
-
+			{
+				var waitSec = GetPrivateProfileInt(
+					"plugin",
+					"waittime",
+					this.defaultWaitSec,
+					this.iniPath);
+				this.sync.WaitOne(waitSec * 1000); // フリーズ防止のためデフォルト50秒で解除する
+			}
 			PostMessage(this.hVoicePeak, this.connectionMsg,
 				(IntPtr)VPC_MSG_ENABLEHOOK,
 				(IntPtr)VPC_HOOK_DISABLE);
-			unhookFunc(this.hVoicePeak);
+			this.unhookFunc(this.hVoicePeak);
 
 			click(this.hVoicePeak, 400, 140);
 			if(!string.IsNullOrEmpty(text)) {
-				keyboard(this.hVoicePeak, VK_HOME);
-				foreach(var _ in text) {
-					keyboard(this.hVoicePeak, VK_DELETE);
+				// 残ることがあるらしいので3週Deleteを打つ
+				for(var i = 0; i < 3; i++) {
+					keyboard(this.hVoicePeak, VK_HOME);
+					foreach(var _ in text) {
+						keyboard(this.hVoicePeak, VK_DELETE);
+					}
 				}
 			}
 		}
