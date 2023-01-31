@@ -213,10 +213,10 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 			var ptr = MapViewOfFile(hMapObj, FILE_MAP_WRITE, 0, 0, IntPtr.Zero);
 			lstrcpy(ptr, text);
 			UnmapViewOfFile(ptr);
-			SendMessage(
+			PostMessage(
 				this.hVoicePeak, this.connectionMsg,
 				(IntPtr)VPC_MSG_ENABLEHOOK2,
-				IntPtr.Zero);
+				(IntPtr)VPC_HOOK_ENABLE);
 
 			{
 				var waitSec = GetPrivateProfileInt(
@@ -228,7 +228,7 @@ namespace Yarukizero.Net.Yularinette.VociePeakConnect {
 			}
 
 			PostMessage(this.hVoicePeak, this.connectionMsg,
-				(IntPtr)VPC_MSG_ENABLEHOOK,
+				(IntPtr)VPC_MSG_ENABLEHOOK2,
 				(IntPtr)VPC_HOOK_DISABLE);
 			this.unhookFunc(this.hVoicePeak);
 			CloseHandle(hMapObj);
