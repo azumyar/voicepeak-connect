@@ -156,7 +156,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 					::KillTimer(msg->hwnd, ::gs_timer);
 					::gs_timer = NULL;
 				}
-				::gs_timer = ::SetTimer(msg->hwnd, 0, 100, ::SpeechTimerProc);
+				::gs_timer = ::SetTimer(msg->hwnd, 0, 250, ::SpeechTimerProc);
 			}
 			break;
 		}
