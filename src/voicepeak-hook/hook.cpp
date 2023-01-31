@@ -1,7 +1,4 @@
-#include "pch.h"
-
-/* extern "C" __declspec(dllexport) */ bool WINAPI AttachVoicePeak(HWND hVoicePeak);
-
+#include "pch.hpp"
 
 namespace {
 	const TCHAR* MSG_VP_CONNECT = TEXT("yarukizero-vp-connect");
@@ -24,10 +21,9 @@ namespace {
 	*/
 
 	const int HOOKSTEP_WAIT = 0;
-	const int HOOKSTEP_START = 1;
-	const int HOOKSTEP_BEGINSPEECH = 2;
-	const int HOOKSTEP_ENDSPEECH = 3;
-	const int HOOKSTEP_END = 4;
+	const int HOOKSTEP_BEGINSPEECH = 1;
+	const int HOOKSTEP_ENDSPEECH = 2;
+	const int HOOKSTEP_END = 3;
 
 	HHOOK gs_hWndHook = NULL;
 	HHOOK gs_hMsgHook = NULL;
@@ -43,57 +39,16 @@ namespace {
 		PostMessage(hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
 	}
 
-#if false
-	// DLLインジェクション処理
-	WNDPROC pVpProc;
-
-	LRESULT CALLBACK SubWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
-		if(gs_msgVpConnect && (gs_msgVpConnect == msg)) {
-			switch(wp) {
-			case 0:
-				return 1;
-			case 1:
-				gs_isHookAction = wp != 0;
-				return 1;
-			}
-			return 0;
+	inline void EnableHook(bool enable, int startStep) {
+		if (enable) {
+			::gs_isHookAction = true;
+			::gs_hookStep = startStep;
+			::gs_startTime = ::gs_isHookAction ? ::GetTickCount64() : 0;
 		}
-
-		switch (msg) {
-		case WM_MOUSELEAVE:
-			if (gs_isHookAction) {
-				return 0;
-			}
-			break;
-		}
-
-		return ::CallWindowProcW(pVpProc, hwnd, msg, wp, lp);
-	}
-
-
-	BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
-		DWORD id1 = ::GetCurrentProcessId();
-		DWORD id2;
-		::GetWindowThreadProcessId(hwnd, &id2);
-		if (id1 == id2) {
-			TCHAR strTitle[64];
-			::GetWindowText(hwnd, strTitle, 64);
-			if (lstrcmpi(strTitle, TEXT("voicepeak")) == 0) {
-				::AttachVoicePeak(hwnd);
-				return FALSE;
-			}
-		}
-		return TRUE;
-	}
-#endif
-	void WaitTimerProc(HWND hWnd, UINT uMsg, UINT_PTR nIDEvent, DWORD dwTime) {
-		::KillTimer(hWnd, ::gs_timer);
-		::gs_timer = NULL;
-
-		if(::gs_hookStep < HOOKSTEP_START) {
-			::gs_hookStep = HOOKSTEP_START;
-			// フォーカスを削除してカーソルのWM_PAINTを抑制する
-			::PostMessage(hWnd, WM_KILLFOCUS, 0, 0);
+		else {
+			::gs_isHookAction = false;
+			::gs_hookStep = HOOKSTEP_END;
+			::gs_startTime = 0;
 		}
 	}
 
@@ -116,37 +71,7 @@ namespace {
 			}
 		}
 	}
-
-	inline void EnableHook(bool enable, int startStep) {
-		if(enable) {
-			::gs_isHookAction = true;
-			::gs_hookStep = startStep;
-			::gs_startTime = ::gs_isHookAction ? ::GetTickCount64() : 0;
-		} else {
-			::gs_isHookAction = false;
-			::gs_hookStep = HOOKSTEP_END;
-			::gs_startTime = 0;
-		}
-	}
 }
-
-#if false
-// DLLインジェクション処理
-/* extern "C" __declspec(dllexport) */ bool WINAPI AttachVoicePeak(HWND hVoicePeak) {
-	gs_msgVpConnect = ::RegisterWindowMessage(MSG_VP_CONNECT);
-	pVpProc = reinterpret_cast<WNDPROC>(::GetWindowLongPtr(hVoicePeak, GWLP_WNDPROC));
-	::SetWindowLongPtr(hVoicePeak, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(SubWndProc));
-
-	return true;
-}
-
-void Attach() {
-	//MessageBoxA(NULL, "test", "aaaa", 0);
-
-	//::EnumWindows(EnumWindowsProc, NULL);
-	::AttachVoicePeak(::FindWindow(NULL, TEXT("VOICEPEAK")));
-}
-#endif
 
 extern "C" __declspec(dllexport) LRESULT CALLBACK HookWndProc(int code, WPARAM wParam, LPARAM lParam) {
 	if(code == HC_ACTION) {
@@ -176,7 +101,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 				break;
 			case VPC_MSG_ENABLEHOOK:
 				if(msg->lParam == VPC_HOOK_ENABLE) {
-					::EnableHook(true, HOOKSTEP_START);
+					::EnableHook(true, HOOKSTEP_BEGINSPEECH);
 				} else {
 					::EnableHook(false, HOOKSTEP_END);
 				}
@@ -199,7 +124,8 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 							}
 							::PostMessage(msg->hwnd, WM_KEYDOWN, VK_HOME, 0x000000001);
 							::PostMessage(msg->hwnd, WM_KEYUP, VK_HOME, 0xC00000001);
-							::gs_timer = ::SetTimer(msg->hwnd, 0, 50, ::WaitTimerProc);
+							// フォーカスを削除してカーソルのWM_PAINTを抑制する
+							::PostMessage(msg->hwnd, WM_KILLFOCUS, 0, 0);
 
 							::UnmapViewOfFile(speech);
 						}
@@ -220,7 +146,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 			}
 			break;
 		case WM_PAINT:
-			if(::gs_isHookAction && (HOOKSTEP_START <= ::gs_hookStep) && (::gs_hookStep < HOOKSTEP_ENDSPEECH)) {
+			if(::gs_isHookAction && (HOOKSTEP_WAIT <= ::gs_hookStep) && (::gs_hookStep < HOOKSTEP_ENDSPEECH)) {
 				/*
 				if((::GetTickCount64() - ::gs_startTime) < 500) {
 					break;
@@ -230,7 +156,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 					::KillTimer(msg->hwnd, ::gs_timer);
 					::gs_timer = NULL;
 				}
-				::gs_timer = ::SetTimer(msg->hwnd, 0, 1000, ::SpeechTimerProc);
+				::gs_timer = ::SetTimer(msg->hwnd, 0, 100, ::SpeechTimerProc);
 			}
 			break;
 		}
