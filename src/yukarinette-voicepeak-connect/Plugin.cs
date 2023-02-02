@@ -5,7 +5,7 @@ using System.Resources;
 using System.IO;
 using System.Windows.Media.Imaging;
 
-namespace Yarukizero.Net.Yularinette.VociePeakConnect {
+namespace Yarukizero.Net.Yularinette.VoicePeakConnect {
 	public class Plugin : IYukarinetteInterface {
 		public override string Name { get; } = "VOICEPEAK メッセージ連携";
 		public override System.Windows.Media.ImageSource Icon => icon;

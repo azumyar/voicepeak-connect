@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Yarukizero.Net.Yularinette.VociePeakConnect {
+namespace Yarukizero.Net.Yularinette.VoicePeakConnect {
 	internal class Connect : IDisposable {
 		[DllImport("user32.dll", CharSet = CharSet.Unicode)]
 		static extern int RegisterWindowMessage(string lpString);
