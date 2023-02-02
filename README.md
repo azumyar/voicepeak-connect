@@ -1,7 +1,7 @@
 # voicepeak-connect
 
 [ゆかりねっとプラグインはここ](https://install.appcenter.ms/users/azumyar/apps/yukerinette-voicepeak-plugin/distribution_groups/canary)  
-[ゆかりねっとプラグイン説明書はここ](YUKARINETTE.md)
+[ゆかりねっとプラグイン説明書はここ](YUKARINETTE.md)  
 [SAPI実装(棒読みちゃん連携))はここ](https://install.appcenter.ms/users/azumyar/apps/sapi-voicepeak/distribution_groups/canary)  
 [SAPI実装説明書はここ](SAPI.md)
 
