@@ -2,15 +2,18 @@
 
 using Microsoft.VisualBasic.Devices;
 using Microsoft.VisualBasic.Logging;
+using NAudio.CoreAudioApi;
+using NAudio.Wave;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Reflection;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Windows.Forms;
-
 
 namespace Yarukizero.Net.VocePeakConnect.Lab;
 
@@ -35,7 +38,7 @@ class Program {
 	static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, IntPtr dwSize, int flAllocationType, int flProtect);
 	[DllImport("kernel32.dll")]
 	static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, string lpBuffer, IntPtr nSize, IntPtr lpNumberOfBytesWritten);
-	[DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError =true)]
+	[DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
 	static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
 	[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
 	static extern IntPtr GetModuleHandle(string lpLibFileName);
@@ -66,7 +69,7 @@ class Program {
 	static extern bool ImmReleaseContext(IntPtr hwnd, IntPtr himc);
 
 	[DllImport("imm32.dll")]
-	static extern bool ImmSetOpenStatus(IntPtr himc,　bool unnamedParam2);
+	static extern bool ImmSetOpenStatus(IntPtr himc, bool unnamedParam2);
 
 	[DllImport("imm32.dll", CharSet = CharSet.Unicode)]
 
@@ -217,6 +220,10 @@ class Program {
 
 	[STAThread]
 	static void Main(string[] args) {
+		Impl02();
+	}
+
+	static void Impl01() {
 		IntPtr.Size.WriteLine("ポインタサイズ={0}");
 
 		var target = FindWindow(null, "VOICEPEAK");
@@ -268,6 +275,7 @@ class Program {
 		//*/
 		//AttachThreadInput(tidMe, tidTarget, true).WriteLine();
 	}
+
 	static void Speech(
 		IntPtr target,
 		int msg,
@@ -290,7 +298,7 @@ class Program {
 		click(target, 400, 140);
 
 		// テキスト送信
-		foreach (var c in speechText) {
+		foreach(var c in speechText) {
 			SendMessage(target, WM_IME_CHAR, (IntPtr)c, IntPtr.Zero).WriteLine();
 		}
 		Thread.Sleep(50 * speechText.Length);
@@ -339,5 +347,137 @@ class Program {
 		Sleep(100);
 		PostMessage(target, WM_KEYUP, (IntPtr)VK_RETURN, (IntPtr)0xC153001);
 #endif
+	}
+
+	[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+	static extern IntPtr CreateFile(string pszFileName, int dwAccess, int dwShare, IntPtr psa, int dwCreatDisposition, int dwFlagsAndAttributes, IntPtr hTemplate);
+
+	[DllImport("kernel32.dll")]
+	static extern bool ReadFile(IntPtr hFile, byte[] pBuffer, int nNumberOfBytesToRead, out int pNumberOfBytesRead, IntPtr pOverlapped);
+
+	[DllImport("kernel32.dll")]
+	static extern int GetFileSize(IntPtr hFile, IntPtr pFileSizeHigh);
+	[DllImport("kernel32.dll")]
+	static extern bool CloseHandle(IntPtr hObject);
+
+	[DllImport("kernel32.dll")]
+	static extern int WaitForSingleObject(IntPtr hHandle, int dwMilliseconds);
+	const int WAIT_TIMEOUT = 0x102;
+
+
+	static void Impl02() {
+		Speech2("てすとなのだ");
+		Speech2("ずんだもんなのだ");
+		Speech2("ずんだもちたべたいのだ");
+		Speech2("ずんだもんなのだ");
+		Speech2("ずん ずん ずん ずん");
+	}
+
+	static void Speech2(string speech) {
+		speech.WriteLine();
+
+		var voicePeak = @"C:\Program Files\VOICEPEAK\voicepeak.exe";
+		var fileName = "vp.wav";
+
+		if(File.Exists(fileName)) {
+			File.Delete(fileName);
+		}
+
+		IntPtr hFile;
+		unchecked {
+			hFile = CreateFile(
+				fileName,
+				(int)0x80000000,
+				0x00000001 | 2,
+				IntPtr.Zero,
+				1,
+				0,
+				IntPtr.Zero);
+			hFile.WriteLine();
+		}
+
+		var sw = new Stopwatch();
+		sw.Start();
+		var p = Process.Start(new ProcessStartInfo() {
+			FileName = voicePeak,
+			Arguments = $"-s \"{speech}\" -n Zundamon -o {fileName}",
+			RedirectStandardOutput = true,
+		});
+
+		var bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 1));
+		var wavProvider = new VolumeWaveProvider16(bufferedWaveProvider);
+		//wavProvider.Volume = 0.1f;
+		// TODO using
+		var mmDevice = new MMDeviceEnumerator()
+			.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+
+		WasapiOut wavPlayer = null;
+		try {
+			Task.Run(() => {
+				byte[] b = new byte[76800]; // 1秒間のデータサイズ
+				var pos = 0;
+				var len = 0;
+				var sw = new Stopwatch();
+				while(ReadFile(
+					hFile,
+					b,
+					b.Length,
+					out var ret,
+					IntPtr.Zero
+						)) {
+					if(0 < ret) {
+						if(pos == 0) {
+							sw.Start();
+							int head = 104; // voicepeakが出力するデータ領域開始アドレス
+							bufferedWaveProvider.AddSamples(b, head, ret - head);
+						} else {
+							bufferedWaveProvider.AddSamples(b, 0, ret);
+						}
+						pos += ret;
+					}
+					var exit = WaitForSingleObject(p.Handle, 1000);
+					if(exit == WAIT_TIMEOUT) {
+						continue;
+					}
+					if(p.ExitCode != 0) {
+						return;
+					}
+					if(len == 0) {
+						len = GetFileSize(hFile, IntPtr.Zero);
+					}
+					if(ret == 0 && len <= pos) {
+						sw.Stop();
+						while(sw.ElapsedMilliseconds < (pos / 76800d) * 1000) {
+							sw.Start();
+							Thread.Sleep(1);
+							sw.Stop();
+						}
+						wavPlayer?.Stop();
+						break;
+					}
+				}
+			});
+
+			wavPlayer = new WasapiOut(mmDevice, AudioClientShareMode.Shared, false, 200);
+			wavPlayer.Init(wavProvider);
+			wavPlayer.Play();
+
+			while(wavPlayer.PlaybackState == PlaybackState.Playing) {
+				if((WaitForSingleObject(p.Handle, 10) != WAIT_TIMEOUT) && (p.ExitCode != 0)) {
+					break;
+				}
+				System.Threading.Thread.Sleep(100);
+			}
+			p.WaitForExit();
+			//p.ExitCode.WriteLine();
+			sw.Stop();
+			sw.ElapsedMilliseconds.WriteLine();
+		}
+		finally {
+			if(hFile != IntPtr.Zero) {
+				CloseHandle(hFile);
+			}
+			wavPlayer?.Dispose();
+		}
 	}
 }

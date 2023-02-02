@@ -10,9 +10,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ソリューション項目
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "yukarinette-voicepeak-connect", "src\yukarinette-voicepeak-connect\yukarinette-voicepeak-connect.csproj", "{B99D9C0C-4E69-4A64-8E32-B6F93A696126}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "yukarinette-voicepeak-connect", "src\yukarinette-voicepeak-connect\yukarinette-voicepeak-connect.csproj", "{B99D9C0C-4E69-4A64-8E32-B6F93A696126}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "voicepeak-hook", "src\voicepeak-hook\voicepeak-hook.vcxproj", "{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "sapi-voicepeak-connect", "src\sapi-voicepeak-connect\sapi-voicepeak-connect.csproj", "{BCA9519D-81BD-4A58-BA7F-34872EB2509B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,13 +55,21 @@ Global
 		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Debug|x64.ActiveCfg = Debug|x64
 		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Debug|x64.Build.0 = Debug|x64
 		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Debug|x86.ActiveCfg = Debug|Win32
-		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Debug|x86.Build.0 = Debug|Win32
 		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Release|Any CPU.ActiveCfg = Release|x64
 		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Release|Any CPU.Build.0 = Release|x64
 		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Release|x64.ActiveCfg = Release|x64
 		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Release|x64.Build.0 = Release|x64
 		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Release|x86.ActiveCfg = Release|Win32
-		{7FD03A16-C3CF-4A91-9EE2-FA587D243F9A}.Release|x86.Build.0 = Release|Win32
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Debug|x64.ActiveCfg = Debug|x64
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Debug|x64.Build.0 = Debug|x64
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Debug|x86.ActiveCfg = Debug|x86
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Debug|x86.Build.0 = Debug|x86
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Release|Any CPU.ActiveCfg = Release|x64
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Release|x64.ActiveCfg = Release|x64
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Release|x64.Build.0 = Release|x64
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Release|x86.ActiveCfg = Release|x86
+		{BCA9519D-81BD-4A58-BA7F-34872EB2509B}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

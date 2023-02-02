@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <RuntimeIdentifiers>win-x86;win-x64</RuntimeIdentifiers>
+    <Platforms>x64;x86</Platforms>
+    <RootNamespace>Yarukizero.Net.Sapi.VoicePeakConnect</RootNamespace>
+    <Nullable>enable</Nullable>
+
+    <EnableComHosting>true</EnableComHosting>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblyName>$(AssemblyName)-$(Platform)</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)' == 'x64'">
+    <DefineConstants>PLATFORM_x64</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\unknown-error.wav" />
+    <EmbeddedResource Include="Resources\vp-notfound.wav" />
+    <EmbeddedResource Include="Resources\vp-error.wav" />
+  </ItemGroup>
+
+    <ItemGroup>
+    <COMReference Include="TTSEngineLib">
+      <WrapperTool>tlbimp</WrapperTool>
+      <VersionMinor>0</VersionMinor>
+      <VersionMajor>10</VersionMajor>
+      <Guid>5f7209db-16c5-45ae-a67d-60b8585100ca</Guid>
+      <Lcid>0</Lcid>
+      <Isolated>false</Isolated>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.Windows.Extensions" Version="6.0.0" />
+    </ItemGroup>
+</Project>
