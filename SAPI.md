@@ -1,8 +1,8 @@
 # voicepeak-connect SAPI
 
 voicepeak-connect のSAPI実装です。  
-棒読みちゃんなどのSAPI対応クライアントからVOICEPEAKと連携します 
-https://install.appcenter.ms/users/azumyar/apps/sapi-voicepeak/distribution_groups/canary
+棒読みちゃんなどのSAPI対応クライアントからVOICEPEAKと連携します  
+https://install.appcenter.ms/users/azumyar/apps/sapi-voicepeak/distribution_groups/canary  
 バイナリは現時点で棒読みちゃんをターゲットにしているためx86版のみの配布になっています。
 
 ## インストール
