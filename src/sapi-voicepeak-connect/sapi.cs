@@ -32,19 +32,29 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 	private static readonly Guid SPDFID_Text = new Guid ("7CEEF9F9-3D13-11d2-9EE7-00C04F797396");
 
 	[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-	static extern IntPtr CreateFile(string pszFileName, int dwAccess, int dwShare, IntPtr psa, int dwCreatDisposition, int dwFlagsAndAttributes, IntPtr hTemplate);
+	private static extern IntPtr CreateFile(string pszFileName, int dwAccess, int dwShare, IntPtr psa, int dwCreatDisposition, int dwFlagsAndAttributes, IntPtr hTemplate);
 
 	[DllImport("kernel32.dll")]
-	static extern bool ReadFile(IntPtr hFile, byte[] pBuffer, int nNumberOfBytesToRead, out int pNumberOfBytesRead, IntPtr pOverlapped);
+	private static extern bool ReadFile(IntPtr hFile, byte[] pBuffer, int nNumberOfBytesToRead, out int pNumberOfBytesRead, IntPtr pOverlapped);
 
 	[DllImport("kernel32.dll")]
-	static extern int GetFileSize(IntPtr hFile, IntPtr pFileSizeHigh);
+	private static extern int GetFileSize(IntPtr hFile, IntPtr pFileSizeHigh);
 	[DllImport("kernel32.dll")]
-	static extern bool CloseHandle(IntPtr hObject);
+	private static extern bool CloseHandle(IntPtr hObject);
 
 	[DllImport("kernel32.dll")]
-	static extern int WaitForSingleObject(IntPtr hHandle, int dwMilliseconds);
-	const int WAIT_TIMEOUT = 0x102;
+	private static extern int WaitForSingleObject(IntPtr hHandle, int dwMilliseconds);
+	private const int WAIT_TIMEOUT = 0x102;
+	private const int GENERIC_WRITE = 0x40000000;
+	private const int GENERIC_READ = unchecked((int)0x80000000);
+	private const int FILE_SHARE_READ = 0x00000001;
+	private const int FILE_SHARE_WRITE = 0x00000002;
+	private const int FILE_SHARE_DELETE = 0x00000004;
+	private const int CREATE_NEW = 1;
+	private const int CREATE_ALWAYS = 2;
+	private const int OPEN_EXISTING = 3;
+	private const int OPEN_ALWAYS = 4;
+	private const int TRUNCATE_EXISTING = 5;
 
 	[Flags]
 	enum SPVESACTIONS {
@@ -98,10 +108,10 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		SPEI_RESERVED3 = 63
 	}
 
-	const ulong SPFEI_FLAGCHECK = (1u << (int)SPEVENTENUM.SPEI_RESERVED1) | (1u << (int)SPEVENTENUM.SPEI_RESERVED2);
-	const ulong SPFEI_ALL_TTS_EVENTS = 0x000000000000FFFEul | SPFEI_FLAGCHECK;
-	const ulong SPFEI_ALL_SR_EVENTS = 0x003FFFFC00000000ul | SPFEI_FLAGCHECK;
-	const ulong SPFEI_ALL_EVENTS = 0xEFFFFFFFFFFFFFFFul;
+	private const ulong SPFEI_FLAGCHECK = (1u << (int)SPEVENTENUM.SPEI_RESERVED1) | (1u << (int)SPEVENTENUM.SPEI_RESERVED2);
+	private const ulong SPFEI_ALL_TTS_EVENTS = 0x000000000000FFFEul | SPFEI_FLAGCHECK;
+	private const ulong SPFEI_ALL_SR_EVENTS = 0x003FFFFC00000000ul | SPFEI_FLAGCHECK;
+	private const ulong SPFEI_ALL_EVENTS = 0xEFFFFFFFFFFFFFFFul;
 
 	private ulong SPFEI(SPEVENTENUM SPEI_ord) => (1ul << (int)SPEI_ord) | SPFEI_FLAGCHECK;
 
@@ -114,6 +124,10 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 	}
 
 	private static readonly string DefaultVoicePeakPath = @"C:\Program Files\VOICEPEAK\voicepeak.exe";
+	private static readonly string KeyVoicePeakPath = "x-voicepeak-path";
+	private static readonly string KeyVoicePeakNarrator = "x-voicepeak-narrator";
+	private static readonly string KeyVoicePeakPitch = "x-voicepeak-pitch";
+	private static readonly string KeyVoicePeakEmotion = "x-voicepeak-emotion";
 
 	private readonly string tmpWaveFile = Path.Combine(Path.GetTempPath(), "voicepeak-connect-sapi.wav");
 	private ISpObjectToken? token;
@@ -160,6 +174,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 			_ => ""
 		};
 		var optPitch = this.voicePeakPitch switch {
+			string s when s == "0" =>  "",
 			string s when !string.IsNullOrEmpty(s) =>  $" --pitch {s} ",
 			_ => ""
 		};
@@ -198,18 +213,14 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 				}
 
 				// 先にファイルを開いておくことでVoicePeakのロックを回避する
-				IntPtr hFile;
-				unchecked {
-					hFile = CreateFile(
-						tmpWaveFile,
-						(int)0x80000000,
-						0x00000001 | 2,
-						IntPtr.Zero,
-						1,
-						0,
-						IntPtr.Zero);
-				}
-
+				var hFile = CreateFile(
+					tmpWaveFile,
+					GENERIC_READ,
+					FILE_SHARE_READ | FILE_SHARE_WRITE,
+					IntPtr.Zero,
+					CREATE_NEW,
+					0,
+					IntPtr.Zero);
 				var ms = new MemoryStream();
 				var p = Process.Start(new ProcessStartInfo() {
 					FileName = voicePeakExe,
@@ -223,14 +234,13 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 						var len = 0;
 						while(ReadFile(
 							hFile,
-							b,
-							b.Length,
+							b, b.Length,
 							out var ret,
-							IntPtr.Zero
-								)) {
+							IntPtr.Zero)) {
+
 							if(0 < ret) {
 								if(pos == 0) {
-									int head = 104; // voicepeakが出力するデータ領域開始アドレス
+									var head = 104; // voicepeakが出力するデータ領域開始アドレス
 									ms.Write(b, head, ret - head);
 								} else {
 									ms.Write(b, 0, ret);
@@ -364,10 +374,10 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		}
 
 		this.token = pToken;
-		this.voicePeakPath = get("x-voicepeak-path");
-		this.voicePeakNarrator = get("x-voicepeak-narrator");
-		this.voicePeakEmotion = get("x-voicepeak-emotion");
-		this.voicePeakPitch = get("x-voicepeak-pitch");
+		this.voicePeakPath = get(KeyVoicePeakPath);
+		this.voicePeakNarrator = get(KeyVoicePeakNarrator);
+		this.voicePeakEmotion = get(KeyVoicePeakEmotion);
+		this.voicePeakPitch = get(KeyVoicePeakPitch);
 	}
 
 
@@ -381,6 +391,11 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		var entry = @"SOFTWARE\Microsoft\Speech\Voices\Tokens";
 		var prefix = "TTS_YARUKIZERO_VOICEPAEK";
 		var narrators = "";
+
+		if(!File.Exists(DefaultVoicePeakPath)) {
+			return;
+		}
+
 		try {
 			var p = Process.Start(new ProcessStartInfo() {
 				FileName = DefaultVoicePeakPath,
@@ -395,17 +410,18 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		catch {
 			return;
 		}
+
 		// 一度情報を破棄する
-		UnregisterClass();
+		InitializeRegistry();
 		foreach(var name in narrators.Replace("\r\n", "\n").Split('\n').Where(x => !string.IsNullOrWhiteSpace(x))) {
 			using(var registryKey = Registry.LocalMachine.CreateSubKey($@"{entry}\{prefix}-{safePath(name)}")) {
 				registryKey.SetValue("", $"VOICEPAEK {name}");
 				registryKey.SetValue("411", $"VOICEPAEK {name}");
 				registryKey.SetValue("CLSID", $"{{{GuidConst.ClassGuid}}}");
-				registryKey.SetValue("x-voicepeak-path", DefaultVoicePeakPath);
-				registryKey.SetValue("x-voicepeak-narrator", name);
-				registryKey.SetValue("x-voicepeak-pitch", "0");
-				registryKey.SetValue("x-voicepeak-emotion", "");
+				registryKey.SetValue(KeyVoicePeakPath, DefaultVoicePeakPath);
+				registryKey.SetValue(KeyVoicePeakNarrator, name);
+				registryKey.SetValue(KeyVoicePeakPitch, "0");
+				registryKey.SetValue(KeyVoicePeakEmotion, "");
 			}
 			using(var registryKey = Registry.LocalMachine.CreateSubKey($@"{entry}\{prefix}-{safePath(name)}\Attributes")) {
 				registryKey.SetValue("Age", "Teen"); // とれないのでここはてきとー
@@ -419,10 +435,10 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 
 	[ComUnregisterFunction()]
 	public static void UnregisterClass(string _) {
-		UnregisterClass();
+		InitializeRegistry();
 	}
 
-	private static void UnregisterClass() {
+	private static void InitializeRegistry() {
 		using(var regTokensKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Speech\Voices\Tokens\", true)) {
 			if(regTokensKey == null) {
 				return;
