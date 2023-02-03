@@ -9,6 +9,8 @@ using System.Text.RegularExpressions;
 using System.Text;
 using System.Threading.Tasks;
 using TTSEngineLib;
+using System.Threading;
+using System.Xml;
 
 namespace Yarukizero.Net.Sapi.VoicePeakConnect;
 
@@ -149,6 +151,34 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 				return false;
 			}
 		}
+		static uint output(ISpTTSEngineSite output, byte[] data) {
+			var pWavData = IntPtr.Zero;
+			try {
+				if(data.Length == 0) {
+					output.Write(pWavData, 0u, out var written);
+					return written;
+				} else {
+					pWavData = Marshal.AllocCoTaskMem(data.Length);
+					Marshal.Copy(data, 0, pWavData, data.Length);
+					output.Write(pWavData, (uint)data.Length, out var written);
+					return written;
+				}
+			}
+			finally {
+				if(pWavData != IntPtr.Zero) {
+					Marshal.FreeCoTaskMem(pWavData);
+				}
+			}
+		}
+		void play(string resourceName) {
+			if(this.player == null) {
+				this.player = new System.Media.SoundPlayer();
+			}
+			player.Stream = typeof(VoicePeakConnectTTSEngine)
+				.Assembly
+				.GetManifestResourceStream(resourceName);
+			player.Play();
+		}
 
 		if(rguidFormatId == SPDFID_Text) {
 			return;
@@ -180,25 +210,16 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		};
 
 		if(!File.Exists(voicePeakExe)) {
-			if(this.player == null) {
-				this.player = new System.Media.SoundPlayer();
-			}
-			player.Stream = typeof(VoicePeakConnectTTSEngine).Assembly.GetManifestResourceStream(
-				$"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-notfound.wav");
-			player.Play();
-
-			pOutputSite.Write(IntPtr.Zero, 0u, out var _);
-			return;
+			play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-notfound.wav");
 		}
 
 		try {
-			var writtenWavLength = 0L;
+			var writtenWavLength = 0UL;
 			var currentTextList = pTextFragList;
 			while(true) {
 				if(currentTextList.State.eAction == SPVACTIONS.SPVA_ParseUnknownTag) {
 					goto next;
 				}
-
 				var text = Regex.Replace(
 					currentTextList.pTextStart,
 					@"<.+?>",
@@ -207,11 +228,20 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 				if(string.IsNullOrWhiteSpace(text)) {
 					goto next;
 				}
+				if(((SPVESACTIONS)pOutputSite.GetActions()).HasFlag(SPVESACTIONS.SPVES_ABORT)) {
+					return;
+				}
+				AddEventToSAPI(pOutputSite, currentTextList.pTextStart, text, writtenWavLength);
+
+				if(!File.Exists(voicePeakExe)) {
+					// 無音をしゃべらせる
+					writtenWavLength += output(pOutputSite, new byte[4]);
+					goto next;
+				}
 
 				if(!deleteTmp(tmpWaveFile)) {
 					goto next;
 				}
-
 				// 先にファイルを開いておくことでVoicePeakのロックを回避する
 				var hFile = CreateFile(
 					tmpWaveFile,
@@ -226,6 +256,13 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 					FileName = voicePeakExe,
 					Arguments = $"-s \"{text}\"{optNarrator} -o {tmpWaveFile}{optSpeed}{optEmotion}{optPitch}",
 				});
+				if(p == null) {
+					play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+
+					// 無音をしゃべらせる
+					writtenWavLength += output(pOutputSite, new byte[4]);
+					goto next;
+				}
 
 				try {
 					var t = Task.Run(() => {
@@ -266,26 +303,12 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 					t.Wait();
 
 					if(p.ExitCode == 0) {
-						var data = ms.ToArray();
-						var pWavData = IntPtr.Zero;
-						try {
-							pWavData = Marshal.AllocCoTaskMem(data.Length);
-							Marshal.Copy(data, 0, pWavData, data.Length);
-							pOutputSite.Write(pWavData, (uint)data.Length, out var written);
-							writtenWavLength += written;
-						}
-						finally {
-							if(pWavData != IntPtr.Zero) {
-								Marshal.FreeCoTaskMem(pWavData);
-							}
-						}
+						writtenWavLength += output(pOutputSite, ms.ToArray());
 					} else {
-						if(this.player == null) {
-							this.player = new System.Media.SoundPlayer();
-						}
-						player.Stream = typeof(VoicePeakConnectTTSEngine).Assembly.GetManifestResourceStream(
-							$"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
-						player.Play();
+						play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+
+						// 無音をしゃべらせる
+						writtenWavLength += output(pOutputSite, new byte[4]);
 					}
 				}
 				finally {
@@ -305,12 +328,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 			}
 		}
 		catch {
-			if(this.player == null) {
-				this.player = new System.Media.SoundPlayer();
-			}
-			player.Stream = typeof(VoicePeakConnectTTSEngine).Assembly.GetManifestResourceStream(
-				$"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.unknown-error.wav");
-			player.Play();
+			play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.unknown-error.wav");
 			throw;
 		}
 	}
@@ -318,14 +336,8 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 	private void AddEventToSAPI(ISpTTSEngineSite outputSite, string allText, string speakTargetText, ulong writtenWavLength) {
 		outputSite.GetEventInterest(out var ev);
 		var list = new List<SPEVENT>();
-
-#if PLATFORM_x64
-		var wParam = (ulong)speakTargetText.Length;
-#else
 		var wParam = (uint)speakTargetText.Length;
-#endif
 		var lParam = allText.IndexOf(speakTargetText);
-
 		if((ev & SPFEI(SPEVENTENUM.SPEI_SENTENCE_BOUNDARY)) == SPFEI(SPEVENTENUM.SPEI_SENTENCE_BOUNDARY)) {
 			list.Add(new SPEVENT() { 
 				eEventId = (ushort)SPEVENTENUM.SPEI_SENTENCE_BOUNDARY,
