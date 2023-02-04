@@ -221,7 +221,7 @@ namespace Yarukizero.Net.Yularinette.VoicePeakConnect {
 			{
 				var waitSec = GetPrivateProfileInt(
 					"plugin",
-					"waittime",
+					"waittime_speech",
 					this.defaultWaitSec,
 					this.iniPath);
 				this.sync.WaitOne(waitSec * 1000); // フリーズ防止のためデフォルト50秒で解除する

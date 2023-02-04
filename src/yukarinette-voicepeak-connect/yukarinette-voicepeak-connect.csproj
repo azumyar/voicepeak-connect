@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <RootNamespace>Yarukizero.Net.Yularinette.VoicePeakConnect</RootNamespace>
     <LangVersion>10</LangVersion>
-    <VersionPrefix>0.7.0</VersionPrefix>
+    <VersionPrefix>0.8.0</VersionPrefix>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">

@@ -88,6 +88,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK HookWndProc(int code, WPARAM w
 }
 
 extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM wParam, LPARAM lParam) {
+	static int s_waitTime = 250;
 	if(code == HC_ACTION) {
 		if (!::gs_msgVpConnect) {
 			::gs_msgVpConnect = ::RegisterWindowMessage(MSG_VP_CONNECT);
@@ -108,6 +109,24 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 				break;
 			case VPC_MSG_ENABLEHOOK2:
 				if(msg->lParam == VPC_HOOK_ENABLE) {
+					{
+						TCHAR path[1024] = { 0 };
+						auto len = ::GetModuleFileName(g_module, path, 1024);
+						if(len != 0) {
+							for(auto i=len; 0<=i; i--) {
+								if(path[i] == TEXT('\\')) {
+									::lstrcpy(path + i + 1, TEXT("voicepeak-connet.ini"));
+									break;
+								}
+							}
+							s_waitTime = ::GetPrivateProfileInt(
+								TEXT("plugin"),
+								TEXT("waittime_wmpaint"),
+								s_waitTime,
+								path);
+						}
+					}
+
 					auto hMapObj = CreateFileMapping(
 						reinterpret_cast<HANDLE>(-1),
 						0, PAGE_READONLY, 0, 2048,
@@ -156,7 +175,7 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 					::KillTimer(msg->hwnd, ::gs_timer);
 					::gs_timer = NULL;
 				}
-				::gs_timer = ::SetTimer(msg->hwnd, 0, 250, ::SpeechTimerProc);
+				::gs_timer = ::SetTimer(msg->hwnd, 0, s_waitTime, ::SpeechTimerProc);
 			}
 			break;
 		}
