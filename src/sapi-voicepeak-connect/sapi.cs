@@ -131,7 +131,6 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 	private static readonly string KeyVoicePeakPitch = "x-voicepeak-pitch";
 	private static readonly string KeyVoicePeakEmotion = "x-voicepeak-emotion";
 
-	private readonly string tmpWaveFile = Path.Combine(Path.GetTempPath(), "voicepeak-connect-sapi.wav");
 	private ISpObjectToken? token;
 	private string? voicePeakPath = null;
 	private string? voicePeakNarrator = null;
@@ -239,6 +238,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 					goto next;
 				}
 
+				var tmpWaveFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.wav");
 				if(!deleteTmp(tmpWaveFile)) {
 					goto next;
 				}
