@@ -28,6 +28,8 @@ public interface IVoicePeakConnectTTSEngine : ISpTTSEngine, ISpObjectWithToken {
 [ComVisible(true)]
 [Guid(GuidConst.ClassGuid)]
 public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
+	//private static readonly string logFile = @"";
+
 	private const ushort WAVE_FORMAT_PCM = 1;
 
 	private static readonly Guid SPDFID_WaveFormatEx = new Guid("C31ADBAE-527F-4ff5-A230-F62BB61FF70C");
@@ -216,6 +218,12 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 			var writtenWavLength = 0UL;
 			var currentTextList = pTextFragList;
 			while(true) {
+				/*
+				{
+					pOutputSite.GetEventInterest(out var ev);
+					File.AppendAllLines(logFile, new[] { $"text={currentTextList.pTextStart}, act={pOutputSite.GetActions()}, ev={ev}" });
+				}
+				*/
 				if(currentTextList.State.eAction == SPVACTIONS.SPVA_ParseUnknownTag) {
 					goto next;
 				}
@@ -242,81 +250,21 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 				if(!deleteTmp(tmpWaveFile)) {
 					goto next;
 				}
-				// 先にファイルを開いておくことでVoicePeakのロックを回避する
-				var hFile = CreateFile(
+
+				var voicePeakArg = $"-s \"{text}\"{optNarrator} -o {tmpWaveFile}{optSpeed}{optEmotion}{optPitch}";
+#if false
+				SpeakStream(
+					voicePeakExe, voicePeakArg,
 					tmpWaveFile,
-					GENERIC_READ,
-					FILE_SHARE_READ | FILE_SHARE_WRITE,
-					IntPtr.Zero,
-					CREATE_NEW,
-					0,
-					IntPtr.Zero);
-				var ms = new MemoryStream();
-				var p = Process.Start(new ProcessStartInfo() {
-					FileName = voicePeakExe,
-					Arguments = $"-s \"{text}\"{optNarrator} -o {tmpWaveFile}{optSpeed}{optEmotion}{optPitch}",
-				});
-				if(p == null) {
-					play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
-
-					// 無音をしゃべらせる
-					writtenWavLength += output(pOutputSite, new byte[4]);
-					goto next;
-				}
-
-				try {
-					var t = Task.Run(() => {
-						byte[] b = new byte[76800]; // 1秒間のデータサイズ
-						var pos = 0;
-						var len = 0;
-						while(ReadFile(
-							hFile,
-							b, b.Length,
-							out var ret,
-							IntPtr.Zero)) {
-
-							if(0 < ret) {
-								if(pos == 0) {
-									var head = 104; // voicepeakが出力するデータ領域開始アドレス
-									ms.Write(b, head, ret - head);
-								} else {
-									ms.Write(b, 0, ret);
-								}
-								pos += ret;
-							}
-							var exit = WaitForSingleObject(p.Handle, 1);
-							if(exit == WAIT_TIMEOUT) {
-								continue;
-							}
-							if(p.ExitCode != 0) {
-								return;
-							}
-							if(len == 0) {
-								len = GetFileSize(hFile, IntPtr.Zero);
-							}
-							if(ret == 0 && len <= pos) {
-								break;
-							}
-						}
-					});
-					p.WaitForExit();
-					t.Wait();
-
-					if(p.ExitCode == 0) {
-						writtenWavLength += output(pOutputSite, ms.ToArray());
-					} else {
-						play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
-
-						// 無音をしゃべらせる
-						writtenWavLength += output(pOutputSite, new byte[4]);
-					}
-				}
-				finally {
-					if(hFile != IntPtr.Zero) {
-						CloseHandle(hFile);
-					}
-					ms.DisposeAsync();
-				}
+					pOutputSite,
+					play, ref writtenWavLength);
+#else
+				writtenWavLength += Speak(
+					voicePeakExe, voicePeakArg,
+					tmpWaveFile,
+					pOutputSite,
+					play, output);
+#endif
 				deleteTmp(tmpWaveFile);
 
 			next:
@@ -330,6 +278,216 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		catch {
 			play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.unknown-error.wav");
 			throw;
+		}
+	}
+
+	private uint Speak(
+		string voicePeakExe,
+		string voicePeakArguments,
+		string tmpWaveFile,
+		ISpTTSEngineSite pOutputSite,
+		Action<string> play,
+		Func<ISpTTSEngineSite, byte[], uint> output) {
+		// 先にファイルを開いておくことでVoicePeakのロックを回避する
+		// このケースでは時短は多分マイクロ秒あるかないか
+		var hFile = CreateFile(
+			tmpWaveFile,
+			GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			IntPtr.Zero,
+			CREATE_NEW,
+			0,
+			IntPtr.Zero);
+		using var p = Process.Start(new ProcessStartInfo() {
+			FileName = voicePeakExe,
+			Arguments = voicePeakArguments,
+		});
+		if(p == null) {
+			play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+
+			// 無音をしゃべらせる
+			return output(pOutputSite, new byte[4]);
+		}
+		using var ms = new MemoryStream();
+		try {
+			p.WaitForExit();
+			if(p.ExitCode == 0) {
+				byte[] b = new byte[76800]; // 1秒間のデータサイズ
+				var pos = 0;
+				var len = GetFileSize(hFile, IntPtr.Zero);
+				while(ReadFile(
+					hFile,
+					b, b.Length,
+					out var ret,
+					IntPtr.Zero)) {
+
+					if(0 < ret) {
+						if(pos == 0) {
+							var head = 104; // voicepeakが出力するデータ領域開始アドレス
+							ms.Write(b, head, ret - head);
+						} else {
+							ms.Write(b, 0, ret);
+						}
+						pos += ret;
+					}
+					if(ret == 0 && len <= pos) {
+						break;
+					}
+				}
+
+				return output(pOutputSite, ms.ToArray());
+			} else {
+				/*
+				File.AppendAllLines(logFile, new[] {
+					$"error-arg={voicePeakArguments}",
+				});
+				*/
+				play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+				// 無音をしゃべらせる
+				return output(pOutputSite, new byte[4]);
+			}
+		}
+		finally {
+			p?.Close(); // いらない気がするけどあったほうが安定する気がするだけのプラセボかもしれない
+			if(hFile != IntPtr.Zero) {
+				CloseHandle(hFile);
+			}
+		}
+	}
+
+	// テスト中まだ動かない
+	private void SpeakStream(
+		string voicePeakExe,
+		string voicePeakArguments,
+		string tmpWaveFile,
+		ISpTTSEngineSite pOutputSite,
+		Action<string> play,
+		ref ulong writtenWavLength) {
+
+		static uint output2(ISpTTSEngineSite output, byte[] data, int size) {
+			var pWavData = IntPtr.Zero;
+			try {
+				if(data.Length == 0) {
+					output.Write(pWavData, 0u, out var written);
+					return written;
+				} else {
+					pWavData = Marshal.AllocCoTaskMem(size);
+					Marshal.Copy(data, 0, pWavData, size);
+					output.Write(pWavData, (uint)size, out var written);
+					return written;
+				}
+			}
+			finally {
+				if(pWavData != IntPtr.Zero) {
+					Marshal.FreeCoTaskMem(pWavData);
+				}
+			}
+		}
+
+		// 先にファイルを開いておくことでVoicePeakのロックを回避する
+		var hFile = CreateFile(
+			tmpWaveFile,
+			GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			IntPtr.Zero,
+			CREATE_NEW,
+			0,
+			IntPtr.Zero);
+		var p = Process.Start(new ProcessStartInfo() {
+			FileName = voicePeakExe,
+			Arguments = voicePeakArguments,
+		});
+		if(p == null) {
+			play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+
+			// 無音をしゃべらせる
+			writtenWavLength += output2(pOutputSite, new byte[4], 4);
+			return;
+		}
+		{
+			var arr = new[] {
+				new SPEVENT() {
+					eEventId = (ushort)SPEVENTENUM.SPEI_START_SR_STREAM,
+					elParamType = (ushort)SPEVENTLPARAMTYPE.SPET_LPARAM_IS_UNDEFINED,
+					wParam = 1u,
+					lParam = 0,
+					ullAudioStreamOffset = writtenWavLength
+				}
+			};
+			pOutputSite.AddEvents(ref arr[0], (uint)arr.Length);
+		}
+		try {
+			using var ms = new MemoryStream();
+			var ev = new AutoResetEvent(false);
+			var t = Task.Run(() => {
+				byte[] b = new byte[76800]; // 1秒間のデータサイズ
+				var pos = 0;
+				var len = 0;
+				while(ReadFile(
+					hFile,
+					b, b.Length,
+					out var ret,
+					IntPtr.Zero)) {
+
+					if(0 < ret) {
+						lock(ms) {
+							if(pos == 0) {
+								var head = 104; // voicepeakが出力するデータ領域開始アドレス
+								ms.Write(b, head, ret - head);
+								output2(pOutputSite, b, ret - head);
+							} else {
+								ms.Write(b, 0, ret);
+								output2(pOutputSite, b, ret);
+							}
+							pos += ret;
+							ev.Set();
+						}
+					}
+					var exit = WaitForSingleObject(p.Handle, 1);
+					if(exit == WAIT_TIMEOUT) {
+						continue;
+					}
+					if(p.ExitCode != 0) {
+						break;
+					}
+					if(len == 0) {
+						len = GetFileSize(hFile, IntPtr.Zero);
+					}
+					if(ret == 0 && len <= pos) {
+						break;
+					}
+				}
+				ev.Set();
+			});
+			{
+				var seek = 0L;
+				var b = new byte[76800 * 2];
+				do {
+					ev.WaitOne();
+					var len = ms.Position;
+					ms.Position = seek;
+					var size = (int)(len - seek);
+					ms.Read(b, 0, size);
+					seek = len;
+					ms.Position = seek;
+					writtenWavLength += output2(pOutputSite, b, size);
+				} while(t.Wait(1));
+			}
+			p.WaitForExit();
+
+			if(p.ExitCode == 0) {
+				//writtenWavLength += output(pOutputSite, ms.ToArray());
+			} else {
+				play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+
+				// 無音をしゃべらせる
+				writtenWavLength += output2(pOutputSite, new byte[4], 4);
+			}
+		}
+		finally {
+			if(hFile != IntPtr.Zero) {
+				CloseHandle(hFile);
+			}
 		}
 	}
 
