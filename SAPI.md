@@ -1,5 +1,7 @@
 # voicepeak-connect SAPI
 
+AHSサポートから**VOICEPEAK 1.2.1のCLI機能はテスト機能のままででAHSとしては本バージョンでサポートしていない**という回答をもらったので現在連続して発声するとボイスピークが不正終了することがある事象は対応できません。今後に期待。  
+  
 普通のSAPI実装です。普通にCLIで連携するので早くありません。  
 棒読みちゃんなどのSAPI対応クライアントからVOICEPEAKと連携します。  
 https://install.appcenter.ms/users/azumyar/apps/sapi-voicepeak/distribution_groups/canary  

@@ -21,4 +21,5 @@ https://install.appcenter.ms/users/azumyar/apps/yukerinette-voicepeak-plugin/dis
 
 ## 注意
 赤枠の部分は見えている状態にしてください。ここを隠すと連携に失敗します。
-![注意](md-img/yukarinette01.png)
+![注意](md-img/yukarinette01.png)  
+長文読み込みなどでテキストボックスが見切れてしまいかつそのための領域を画面に確保できない場合iniファイルのwaittime_wmpaintで待ち時間を変更してください。単位はミリ秒です。
