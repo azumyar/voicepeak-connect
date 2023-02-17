@@ -30,6 +30,7 @@ namespace {
 	UINT gs_msgVpConnect = 0;
 	bool gs_isHookAction = false;
 	int gs_hookStep = HOOKSTEP_END;
+	HWND gs_hVoicePeakWnd;
 	HWND gs_hCallBackWnd;
 	UINT_PTR gs_timer = NULL;
 	ULONGLONG gs_startTime = 0;
@@ -52,17 +53,17 @@ namespace {
 		}
 	}
 
-	void SpeechTimerProc(HWND hWnd, UINT uMsg, UINT_PTR nIDEvent, DWORD dwTime) {
-		::KillTimer(hWnd, ::gs_timer);
+	void WINAPI SpeechTimerProc(HWND hWnd, UINT uMsg, UINT_PTR nIDEvent, DWORD dwTime) {
+		::KillTimer(NULL, ::gs_timer);
 		::gs_timer = NULL;
 
 		if(::gs_hookStep < HOOKSTEP_BEGINSPEECH) {
 			::gs_hookStep = HOOKSTEP_BEGINSPEECH;
 			RECT rc = { 0 };
-			::GetClientRect(hWnd, &rc);
+			::GetClientRect(gs_hVoicePeakWnd, &rc);
 			auto w = rc.right - rc.left;
-			::click(hWnd, w / 2 + 125, 20);
-			::click(hWnd, w / 2 + 165, 20);
+			::click(gs_hVoicePeakWnd, w / 2 + 125, 20);
+			::click(gs_hVoicePeakWnd, w / 2 + 165, 20);
 		} else if(::gs_hookStep < HOOKSTEP_ENDSPEECH) {
 			::gs_hookStep = HOOKSTEP_ENDSPEECH;
 
@@ -141,14 +142,14 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 							for(auto i = 0; i < len; i++) {
 								::SendMessage(msg->hwnd, WM_IME_CHAR, speech[i], 0);
 							}
+							::UnmapViewOfFile(speech);
+							::CloseHandle(hMapObj);
+
 							::PostMessage(msg->hwnd, WM_KEYDOWN, VK_HOME, 0x000000001);
 							::PostMessage(msg->hwnd, WM_KEYUP, VK_HOME, 0xC00000001);
 							// フォーカスを削除してカーソルのWM_PAINTを抑制する
 							::PostMessage(msg->hwnd, WM_KILLFOCUS, 0, 0);
-
-							::UnmapViewOfFile(speech);
 						}
-						::CloseHandle(hMapObj);
 					}
 				} else {
 					::EnableHook(false, HOOKSTEP_END);
@@ -172,10 +173,11 @@ extern "C" __declspec(dllexport) LRESULT CALLBACK MsgHookProc(int code, WPARAM w
 				}
 				*/
 				if(::gs_timer) {
-					::KillTimer(msg->hwnd, ::gs_timer);
+					::KillTimer(NULL, ::gs_timer);
 					::gs_timer = NULL;
 				}
-				::gs_timer = ::SetTimer(msg->hwnd, 0, s_waitTime, ::SpeechTimerProc);
+				::gs_hVoicePeakWnd = msg->hwnd;
+				::gs_timer = ::SetTimer(NULL, 0, s_waitTime, ::SpeechTimerProc);
 			}
 			break;
 		}
