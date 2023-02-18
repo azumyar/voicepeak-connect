@@ -1,3 +1,4 @@
+//#define ___LOG
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -28,8 +29,9 @@ public interface IVoicePeakConnectTTSEngine : ISpTTSEngine, ISpObjectWithToken {
 [ComVisible(true)]
 [Guid(GuidConst.ClassGuid)]
 public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
-	//private static readonly string logFile = @"";
-
+#if ___LOG
+	private static readonly string logFile = @"";
+#endif
 	private const ushort WAVE_FORMAT_PCM = 1;
 
 	private static readonly Guid SPDFID_WaveFormatEx = new Guid("C31ADBAE-527F-4ff5-A230-F62BB61FF70C");
@@ -218,12 +220,12 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 			var writtenWavLength = 0UL;
 			var currentTextList = pTextFragList;
 			while(true) {
-				/*
+#if ___LOG
 				{
 					pOutputSite.GetEventInterest(out var ev);
 					File.AppendAllLines(logFile, new[] { $"text={currentTextList.pTextStart}, act={pOutputSite.GetActions()}, ev={ev}" });
 				}
-				*/
+#endif
 				if(currentTextList.State.eAction == SPVACTIONS.SPVA_ParseUnknownTag) {
 					goto next;
 				}
@@ -288,6 +290,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		ISpTTSEngineSite pOutputSite,
 		Action<string> play,
 		Func<ISpTTSEngineSite, byte[], uint> output) {
+
 		// 先にファイルを開いておくことでVoicePeakのロックを回避する
 		// このケースでは時短は多分マイクロ秒あるかないか
 		var hFile = CreateFile(
@@ -298,57 +301,69 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 			CREATE_NEW,
 			0,
 			IntPtr.Zero);
-		using var p = Process.Start(new ProcessStartInfo() {
-			FileName = voicePeakExe,
-			Arguments = voicePeakArguments,
-		});
-		if(p == null) {
-			play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+		const int MaxRetry = 3;
+		try {
+			for(var retry = 0; retry < MaxRetry; retry++) {
+				using var p = Process.Start(new ProcessStartInfo() {
+					FileName = voicePeakExe,
+					Arguments = voicePeakArguments,
+				});
+				if(p == null) {
+					play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
 
+					// 無音をしゃべらせる
+					return output(pOutputSite, new byte[4]);
+				}
+				using var ms = new MemoryStream();
+				try {
+					p.WaitForExit();
+					if(p.ExitCode == 0) {
+						byte[] b = new byte[76800]; // 1秒間のデータサイズ
+						var pos = 0;
+						var len = GetFileSize(hFile, IntPtr.Zero);
+						while(ReadFile(
+							hFile,
+							b, b.Length,
+							out var ret,
+							IntPtr.Zero)) {
+
+							if(0 < ret) {
+								if(pos == 0) {
+									var head = 104; // voicepeakが出力するデータ領域開始アドレス
+									ms.Write(b, head, ret - head);
+								} else {
+									ms.Write(b, 0, ret);
+								}
+								pos += ret;
+							}
+							if(ret == 0 && len <= pos) {
+								break;
+							}
+						}
+						return output(pOutputSite, ms.ToArray());
+					}
+#if ___LOG
+					File.AppendAllLines(logFile, new[] {
+						$"retry {retry+1}-arg={voicePeakArguments}",
+					});
+#endif
+
+				}
+				finally {
+					p?.Close(); // いらない気がするけどあったほうが安定する気がするだけのプラセボかもしれない
+				}
+			}
+			// エラーの場合ここ
+#if ___LOG
+			File.AppendAllLines(logFile, new[] {
+				$"error-arg={voicePeakArguments}",
+			});
+#endif
+			play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
 			// 無音をしゃべらせる
 			return output(pOutputSite, new byte[4]);
 		}
-		using var ms = new MemoryStream();
-		try {
-			p.WaitForExit();
-			if(p.ExitCode == 0) {
-				byte[] b = new byte[76800]; // 1秒間のデータサイズ
-				var pos = 0;
-				var len = GetFileSize(hFile, IntPtr.Zero);
-				while(ReadFile(
-					hFile,
-					b, b.Length,
-					out var ret,
-					IntPtr.Zero)) {
-
-					if(0 < ret) {
-						if(pos == 0) {
-							var head = 104; // voicepeakが出力するデータ領域開始アドレス
-							ms.Write(b, head, ret - head);
-						} else {
-							ms.Write(b, 0, ret);
-						}
-						pos += ret;
-					}
-					if(ret == 0 && len <= pos) {
-						break;
-					}
-				}
-
-				return output(pOutputSite, ms.ToArray());
-			} else {
-				/*
-				File.AppendAllLines(logFile, new[] {
-					$"error-arg={voicePeakArguments}",
-				});
-				*/
-				play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
-				// 無音をしゃべらせる
-				return output(pOutputSite, new byte[4]);
-			}
-		}
 		finally {
-			p?.Close(); // いらない気がするけどあったほうが安定する気がするだけのプラセボかもしれない
 			if(hFile != IntPtr.Zero) {
 				CloseHandle(hFile);
 			}
