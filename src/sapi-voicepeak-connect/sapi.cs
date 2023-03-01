@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using TTSEngineLib;
 using System.Threading;
 using System.Xml;
+using NAudio.CoreAudioApi;
+using NAudio.Wave;
 
 namespace Yarukizero.Net.Sapi.VoicePeakConnect;
 
@@ -134,12 +136,18 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 	private static readonly string KeyVoicePeakNarrator = "x-voicepeak-narrator";
 	private static readonly string KeyVoicePeakPitch = "x-voicepeak-pitch";
 	private static readonly string KeyVoicePeakEmotion = "x-voicepeak-emotion";
+	private static readonly string KeyAudioSolo = "x-audio-solo";
+	private static readonly string KeyAudioDevice = "x-audio-device";
+	private static readonly string KeyAudioVolume = "x-audio-volume";
 
 	private ISpObjectToken? token;
 	private string? voicePeakPath = null;
 	private string? voicePeakNarrator = null;
 	private string? voicePeakEmotion = null;
 	private string? voicePeakPitch = null;
+	private string? audioSolo = null;
+	private string? audioDevice = null;
+	private float audioVolume = 1f;
 	private System.Media.SoundPlayer? player = null;
 
 	public void Speak(uint dwSpeakFlags, ref Guid rguidFormatId, ref WAVEFORMATEX pWaveFormatEx, ref SPVTEXTFRAG pTextFragList, ISpTTSEngineSite pOutputSite) {
@@ -197,6 +205,14 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 				_ => ""
 			};
 		}
+		/*
+		var volume = 1f;
+		{
+			pOutputSite.GetVolume(out var vol);
+			volume = vol / 100f;
+		}
+		*/
+		var volume = this.audioVolume;
 		var voicePeakExe = this.voicePeakPath ?? DefaultVoicePeakPath;
 		var optNarrator = this.voicePeakNarrator switch {
 			string s when !string.IsNullOrEmpty(s) => $" -n \"{s}\" ",
@@ -261,11 +277,18 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 					pOutputSite,
 					play, ref writtenWavLength);
 #else
-				writtenWavLength += Speak(
-					voicePeakExe, voicePeakArg,
-					tmpWaveFile,
-					pOutputSite,
-					play, output);
+				writtenWavLength += string.IsNullOrEmpty(this.audioSolo) switch {
+					true => Speak(
+						voicePeakExe, voicePeakArg,
+						tmpWaveFile,
+						pOutputSite,
+						play, output),
+					false => SpeakSolo(
+						voicePeakExe, voicePeakArg, volume,
+						tmpWaveFile,
+						pOutputSite,
+						play, output),
+				};
 #endif
 				deleteTmp(tmpWaveFile);
 
@@ -341,6 +364,147 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 							}
 						}
 						return output(pOutputSite, ms.ToArray());
+					}
+#if ___LOG
+					File.AppendAllLines(logFile, new[] {
+						$"retry {retry+1}-arg={voicePeakArguments}",
+					});
+#endif
+
+				}
+				finally {
+					p?.Close(); // いらない気がするけどあったほうが安定する気がするだけのプラセボかもしれない
+				}
+			}
+			// エラーの場合ここ
+#if ___LOG
+			File.AppendAllLines(logFile, new[] {
+				$"error-arg={voicePeakArguments}",
+			});
+#endif
+			play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+			// 無音をしゃべらせる
+			return output(pOutputSite, new byte[4]);
+		}
+		finally {
+			if(hFile != IntPtr.Zero) {
+				CloseHandle(hFile);
+			}
+		}
+	}
+
+	private uint SpeakSolo(
+		string voicePeakExe,
+		string voicePeakArguments,
+		float volume,
+		string tmpWaveFile,
+		ISpTTSEngineSite pOutputSite,
+		Action<string> play,
+		Func<ISpTTSEngineSite, byte[], uint> output) {
+
+		// 先にファイルを開いておくことでVoicePeakのロックを回避する
+		// このケースでは時短は多分マイクロ秒あるかないか
+		var hFile = CreateFile(
+			tmpWaveFile,
+			GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			IntPtr.Zero,
+			CREATE_NEW,
+			0,
+			IntPtr.Zero);
+		const int MaxRetry = 3;
+		MMDevice? mmDevice = null;
+		try {
+			var bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 1)) {
+				BufferLength = 76800 * 10,
+			};
+			var wavProvider = new VolumeWaveProvider16(bufferedWaveProvider) {
+				Volume = volume,
+			};
+			using var mde = new MMDeviceEnumerator();
+			try {
+				if(!string.IsNullOrEmpty(this.audioDevice)) {
+					mmDevice = mde.GetDevice(this.audioDevice);
+				}
+			}
+			catch { }
+			if(mmDevice == null) {
+				mmDevice = mde.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+			}
+			using WasapiOut wavPlayer = new WasapiOut(mmDevice, AudioClientShareMode.Shared, false, 200);
+			wavPlayer.Init(wavProvider);
+			for(var retry = 0; retry < MaxRetry; retry++) {
+				wavPlayer.Play();
+				using var p = Process.Start(new ProcessStartInfo() {
+					FileName = voicePeakExe,
+					Arguments = voicePeakArguments,
+				});
+				if(p == null) {
+					play($"{typeof(VoicePeakConnectTTSEngine).Namespace}.Resources.vp-error.wav");
+
+					// 無音をしゃべらせる
+					return output(pOutputSite, new byte[4]);
+				}
+				using var ms = new MemoryStream();
+				try {
+					Task.Run(() => {
+						byte[] b = new byte[76800]; // 1秒間のデータサイズ
+						var pos = 0;
+						var len = 0;
+						var sw = new Stopwatch();
+						while(ReadFile(
+							hFile,
+							b,
+							b.Length,
+							out var ret,
+							IntPtr.Zero)) {
+
+							while((sw.ElapsedMilliseconds + 5000) < (pos / 76800d * 1000)) {
+								sw.Start();
+								Thread.Sleep(1);
+								sw.Stop();
+							};
+							if(0 < ret) {
+								if(pos == 0) {
+									sw.Start();
+									int head = 104; // voicepeakが出力するデータ領域開始アドレス
+									bufferedWaveProvider.AddSamples(b, head, ret - head);
+								} else {
+									bufferedWaveProvider.AddSamples(b, 0, ret);
+								}
+								pos += ret;
+							}
+							var exit = WaitForSingleObject(p.Handle, 100);
+							if(exit == WAIT_TIMEOUT) {
+								continue;
+							}
+							if(p.ExitCode != 0) {
+								wavPlayer?.Stop();
+								return;
+							}
+							if(len == 0) {
+								len = GetFileSize(hFile, IntPtr.Zero);
+							}
+							if(ret == 0 && len <= pos) {
+								sw.Stop();
+								while(sw.ElapsedMilliseconds < (pos / 76800d) * 1000) {
+									sw.Start();
+									Thread.Sleep(1);
+									sw.Stop();
+								}
+								wavPlayer?.Stop();
+								break;
+							}
+						}
+					});
+
+					while(wavPlayer.PlaybackState == PlaybackState.Playing) {
+						System.Threading.Thread.Sleep(100);
+					}
+					p.WaitForExit();
+					if(p.ExitCode == 0) {
+						// 無音をしゃべらせる
+						return output(pOutputSite, new byte[4]);
 					}
 #if ___LOG
 					File.AppendAllLines(logFile, new[] {
@@ -554,8 +718,21 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 
 	public void SetObjectToken(ISpObjectToken pToken) {
 		string get(string key) {
-			pToken.GetStringValue(key, out var s);
-			return s;
+			try {
+				pToken.GetStringValue(key, out var s);
+				return s;
+			}
+			catch(COMException) {
+				return "";
+			}
+		}
+		float @float(string val, float @default) {
+			try {
+				return float.Parse(val);
+			}
+			catch {
+				return @default;
+			}
 		}
 
 		this.token = pToken;
@@ -563,6 +740,9 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		this.voicePeakNarrator = get(KeyVoicePeakNarrator);
 		this.voicePeakEmotion = get(KeyVoicePeakEmotion);
 		this.voicePeakPitch = get(KeyVoicePeakPitch);
+		this.audioSolo = get(KeyAudioSolo);
+		this.audioDevice = get(KeyAudioDevice);
+		this.audioVolume = @float(get(KeyAudioVolume), 1f);
 	}
 
 
@@ -572,6 +752,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 
 	[ComRegisterFunction()]
 	public static void RegisterClass(string _) {
+		var audioSolo = Environment.GetEnvironmentVariable("___voicepeak_connect_audio_solo") ?? "";
 		static string safePath(string name) => Regex.Replace(name, @"[\s,/\:\*\?""\<\>\|]", "");
 		var entry = @"SOFTWARE\Microsoft\Speech\Voices\Tokens";
 		var prefix = "TTS_YARUKIZERO_VOICEPAEK";
@@ -607,6 +788,9 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 				registryKey.SetValue(KeyVoicePeakNarrator, name);
 				registryKey.SetValue(KeyVoicePeakPitch, "0");
 				registryKey.SetValue(KeyVoicePeakEmotion, "");
+				registryKey.SetValue(KeyAudioSolo, audioSolo);
+				registryKey.SetValue(KeyAudioDevice, "");
+				registryKey.SetValue(KeyAudioVolume, "1.0");
 			}
 			using(var registryKey = Registry.LocalMachine.CreateSubKey($@"{entry}\{prefix}-{safePath(name)}\Attributes")) {
 				registryKey.SetValue("Age", "Teen"); // とれないのでここはてきとー
