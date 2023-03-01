@@ -403,7 +403,6 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		Func<ISpTTSEngineSite, byte[], uint> output) {
 
 		// 先にファイルを開いておくことでVoicePeakのロックを回避する
-		// このケースでは時短は多分マイクロ秒あるかないか
 		var hFile = CreateFile(
 			tmpWaveFile,
 			GENERIC_READ,
@@ -431,7 +430,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 			if(mmDevice == null) {
 				mmDevice = mde.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
 			}
-			using WasapiOut wavPlayer = new WasapiOut(mmDevice, AudioClientShareMode.Shared, false, 200);
+			using var wavPlayer = new WasapiOut(mmDevice, AudioClientShareMode.Shared, false, 200);
 			wavPlayer.Init(wavProvider);
 			for(var retry = 0; retry < MaxRetry; retry++) {
 				wavPlayer.Play();
