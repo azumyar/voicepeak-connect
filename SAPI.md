@@ -9,8 +9,10 @@ https://install.appcenter.ms/users/azumyar/apps/sapi-voicepeak/distribution_grou
 ## インストール/アンインストール
 ### 32bit版(棒読みちゃんを使う場合はこちら)
 インストールはx64windows-install-x86.batを管理者権限で実行してください。   
-アンインストールはx64windows-uninstall-x86.batを管理者権限で実行してください。
-
+アンインストールはx64windows-uninstall-x86.batを管理者権限で実行してください。  
+  
+ 棒読みちゃんを使う場合かつ棒読みちゃんの機能を使用しない場合**x64windows-install-as-x86.bat**でインストールすると単体で喋るように構成します。長文の時に発声速度の向上が得られますが、残響や音量など棒読みちゃんが管理している機能は使えません。
+ 
 ### 64bit版
 インストールはx64windows-install-x64.batを管理者権限で実行してください。   
 アンインストールはx64windows-uninstall-x64.batを管理者権限で実行してください。
