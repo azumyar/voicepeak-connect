@@ -415,7 +415,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		MMDevice? mmDevice = null;
 		try {
 			var bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 1)) {
-				BufferLength = 76800 * 10,
+				BufferDuration = TimeSpan.FromSeconds(10),
 			};
 			var wavProvider = new VolumeWaveProvider16(bufferedWaveProvider) {
 				Volume = volume,
@@ -450,7 +450,6 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 						byte[] b = new byte[76800]; // 1秒間のデータサイズ
 						var pos = 0;
 						var len = 0;
-						var sw = new Stopwatch();
 						while(ReadFile(
 							hFile,
 							b,
@@ -458,14 +457,13 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 							out var ret,
 							IntPtr.Zero)) {
 
-							while((sw.ElapsedMilliseconds + 5000) < (pos / 76800d * 1000)) {
-								sw.Start();
-								Thread.Sleep(1);
-								sw.Stop();
-							};
+							while((bufferedWaveProvider.WaveFormat.AverageBytesPerSecond * 5)
+								< bufferedWaveProvider.BufferedBytes) {
+
+								Thread.Sleep(10);
+							}
 							if(0 < ret) {
 								if(pos == 0) {
-									sw.Start();
 									int head = 104; // voicepeakが出力するデータ領域開始アドレス
 									bufferedWaveProvider.AddSamples(b, head, ret - head);
 								} else {
@@ -485,11 +483,8 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 								len = GetFileSize(hFile, IntPtr.Zero);
 							}
 							if(ret == 0 && len <= pos) {
-								sw.Stop();
-								while(sw.ElapsedMilliseconds < (pos / 76800d) * 1000) {
-									sw.Start();
+								while(0 < bufferedWaveProvider.BufferedBytes) {
 									Thread.Sleep(1);
-									sw.Stop();
 								}
 								wavPlayer?.Stop();
 								break;
