@@ -414,12 +414,6 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		const int MaxRetry = 3;
 		MMDevice? mmDevice = null;
 		try {
-			var bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 1)) {
-				BufferDuration = TimeSpan.FromSeconds(10),
-			};
-			var wavProvider = new VolumeWaveProvider16(bufferedWaveProvider) {
-				Volume = volume,
-			};
 			using var mde = new MMDeviceEnumerator();
 			try {
 				if(!string.IsNullOrEmpty(this.audioDevice)) {
@@ -430,9 +424,14 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 			if(mmDevice == null) {
 				mmDevice = mde.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
 			}
-			using var wavPlayer = new WasapiOut(mmDevice, AudioClientShareMode.Shared, false, 200);
-			wavPlayer.Init(wavProvider);
 			for(var retry = 0; retry < MaxRetry; retry++) {
+				var bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 1)) {
+					BufferDuration = TimeSpan.FromSeconds(10),
+				};
+				var wavProvider = new VolumeWaveProvider16(bufferedWaveProvider) {
+					Volume = volume,
+				}; using var wavPlayer = new WasapiOut(mmDevice, AudioClientShareMode.Shared, false, 200);
+				wavPlayer.Init(wavProvider);
 				wavPlayer.Play();
 				using var p = Process.Start(new ProcessStartInfo() {
 					FileName = voicePeakExe,
@@ -444,12 +443,12 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 					// 無音をしゃべらせる
 					return output(pOutputSite, new byte[4]);
 				}
-				using var ms = new MemoryStream();
 				try {
 					Task.Run(() => {
 						byte[] b = new byte[76800]; // 1秒間のデータサイズ
 						var pos = 0;
 						var len = 0;
+						var rty = retry;
 						while(ReadFile(
 							hFile,
 							b,
