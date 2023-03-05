@@ -460,7 +460,15 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 							while((bufferedWaveProvider.WaveFormat.AverageBytesPerSecond * 5)
 								< bufferedWaveProvider.BufferedBytes) {
 
-								Thread.Sleep(10);
+								var exit = WaitForSingleObject(p.Handle, 10);
+								if(exit != WAIT_TIMEOUT) {
+									if(p.ExitCode != 0) {
+										wavPlayer?.Stop();
+										return;
+									} else {
+										Thread.Sleep(10);
+									}
+								}
 							}
 							if(0 < ret) {
 								if(pos == 0) {
@@ -471,9 +479,11 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 								}
 								pos += ret;
 							}
-							var exit = WaitForSingleObject(p.Handle, 100);
-							if(exit == WAIT_TIMEOUT) {
-								continue;
+							{
+								var exit = WaitForSingleObject(p.Handle, 10);
+								if(exit == WAIT_TIMEOUT) {
+									continue;
+								}
 							}
 							if(p.ExitCode != 0) {
 								wavPlayer?.Stop();
