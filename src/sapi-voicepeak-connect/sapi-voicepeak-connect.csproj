@@ -37,7 +37,17 @@
   </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Lucene.Net.Analysis.Kuromoji" Version="4.8.0-beta00016" />
       <PackageReference Include="System.Windows.Extensions" Version="6.0.0" />
       <PackageReference Include="NAudio.Wasapi" Version="2.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="english.dic">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="kuromoji.dic">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 </Project>

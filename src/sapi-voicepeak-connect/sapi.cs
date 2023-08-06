@@ -139,6 +139,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 	private static readonly string KeyAudioSolo = "x-audio-solo";
 	private static readonly string KeyAudioDevice = "x-audio-device";
 	private static readonly string KeyAudioVolume = "x-audio-volume";
+	private static readonly string KeyConvertKana = "x-kana";
 
 	private ISpObjectToken? token;
 	private string? voicePeakPath = null;
@@ -148,6 +149,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 	private string? audioSolo = null;
 	private string? audioDevice = null;
 	private float audioVolume = 1f;
+	private string? convertKana = null;
 	private System.Media.SoundPlayer? player = null;
 
 	public void Speak(uint dwSpeakFlags, ref Guid rguidFormatId, ref WAVEFORMATEX pWaveFormatEx, ref SPVTEXTFRAG pTextFragList, ISpTTSEngineSite pOutputSite) {
@@ -256,6 +258,10 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 				if(((SPVESACTIONS)pOutputSite.GetActions()).HasFlag(SPVESACTIONS.SPVES_ABORT)) {
 					return;
 				}
+				if(this.convertKana == "1") {
+					text = English2Kana.Convert(text);
+				}
+
 				AddEventToSAPI(pOutputSite, currentTextList.pTextStart, text, writtenWavLength);
 
 				if(!File.Exists(voicePeakExe)) {
@@ -746,6 +752,13 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 		this.audioSolo = get(KeyAudioSolo);
 		this.audioDevice = get(KeyAudioDevice);
 		this.audioVolume = @float(get(KeyAudioVolume), 1f);
+		this.convertKana = get(KeyConvertKana);
+
+		if(this.convertKana == "1" && !English2Kana.IsInited) {
+			var dir = Path.GetDirectoryName(typeof(VoicePeakConnectTTSEngine).Assembly.Location);
+			Lucene.Net.Configuration.ConfigurationSettings.GetConfigurationFactory().GetConfiguration()["kuromoji:data:dir"] = dir;
+			English2Kana.Init();
+		}
 	}
 
 
