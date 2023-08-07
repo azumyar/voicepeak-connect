@@ -95,7 +95,7 @@ namespace Yarukizero.Net.Sapi.VoicePeakConnect {
 					last = c4;
 
 					if((c1 == 't') && (c2 == 'c') && (c3 == 'h') && (c4 == 'i')) {
-						r.Append("っち");
+						r.Append("ッチ");
 						s.Skip(4);
 						continue;
 					}
@@ -122,49 +122,160 @@ namespace Yarukizero.Net.Sapi.VoicePeakConnect {
 					var c2 = s.Skip(1).First();
 					var c3 = s.Skip(2).First();
 					last = c3;
-					if((c1 == 's') && (c2 == 'h') && (c3 == 'i')) {
-						r.Append("し");
+					if((c1 == 't') && (c2 == 's') && (c3 == 'u')) {
+						r.Append("ツ");
 						s.Skip(3);
 						continue;
-					} else if((c1 == 'c') && (c2 == 'h') && (c3 == 'i')) {
-						r.Append("ち");
+					}　else if((c1 == 'k') && (c2 == 'w') && (c3 == 'a')) {
+						r.Append("クヮ");
 						s.Skip(3);
 						continue;
-					} else if((c1 == 't') && (c2 == 's') && (c3 == 'u')) {
-						r.Append("つ");
+					} else if((c1 == 'g') && (c2 == 'w') && (c3 == 'a')) {
+						r.Append("グヮ");
 						s.Skip(3);
 						continue;
 					}
 
-					if((c1 == 'c') && (c2 == 'h') && boin(c3)) {
+
+					if((c1 == 'k') && (c2 == 'y') && boin(c3)) {
 						r.Append(c3 switch {
-							'a' => "ちゃ",
-							'i' => "ち",
-							'u' => "ちゅ",
-							'e' => "ちぇ",
-							'o' => "ちょ",
+							'a' => "キャ",
+							'i' => "キィ",
+							'u' => "キュ",
+							'e' => "キェ",
+							'o' => "キョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 's') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "シャ",
+							'i' => "シィ",
+							'u' => "シュ",
+							'e' => "シェ",
+							'o' => "ショ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'c') && (c2 == 'h') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "チャ",
+							'i' => "チ",
+							'u' => "チュ",
+							'e' => "チェ",
+							'o' => "チョ",
 							_ => throw new InvalidOperationException(),
 						});
 						s.Skip(3);
 						continue;
 					} else if((c1 == 'c') && (c2 == 'y') && boin(c3)) {
 						r.Append(c3 switch {
-							'a' => "ちゃ",
-							'i' => "ちぃ",
-							'u' => "ちゅ",
-							'e' => "ちぇ",
-							'o' => "ちょ",
+							'a' => "チャ",
+							'i' => "チィ",
+							'u' => "チュ",
+							'e' => "チェ",
+							'o' => "チョ",
 							_ => throw new InvalidOperationException(),
 						});
 						s.Skip(3);
 						continue;
 					} else if((c1 == 't') && (c2 == 'y') && boin(c3)) {
 						r.Append(c3 switch {
-							'a' => "ちゃ",
-							'i' => "ちぃ",
-							'u' => "ちゅ",
-							'e' => "ちぇ",
-							'o' => "ちょ",
+							'a' => "チャ",
+							'i' => "チィ",
+							'u' => "チュ",
+							'e' => "チェ",
+							'o' => "チョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'n') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "ニャ",
+							'i' => "ニィ",
+							'u' => "ニュ",
+							'e' => "ニェ",
+							'o' => "ニョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'h') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "ヒャ",
+							'i' => "ヒィ",
+							'u' => "ヒュ",
+							'e' => "ヒェ",
+							'o' => "ヒョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'm') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "ミャ",
+							'i' => "ミィ",
+							'u' => "ミュ",
+							'e' => "ミェ",
+							'o' => "ミョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'r') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "リャ",
+							'i' => "リィ",
+							'u' => "リュ",
+							'e' => "リェ",
+							'o' => "リョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'g') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "ギャ",
+							'i' => "ギィ",
+							'u' => "ギュ",
+							'e' => "ギェ",
+							'o' => "ギョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'd') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "ヂャ",
+							'i' => "ヂィ",
+							'u' => "ヂュ",
+							'e' => "ヂェ",
+							'o' => "ヂョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'b') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "ビャ",
+							'i' => "ビィ",
+							'u' => "ビュ",
+							'e' => "ビェ",
+							'o' => "ビョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					} else if((c1 == 'p') && (c2 == 'y') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "ピャ",
+							'i' => "ピィ",
+							'u' => "ピュ",
+							'e' => "ピェ",
+							'o' => "ピョ",
 							_ => throw new InvalidOperationException(),
 						});
 						s.Skip(3);
@@ -172,23 +283,46 @@ namespace Yarukizero.Net.Sapi.VoicePeakConnect {
 					}
 
 
+					if((c1 == 's') && (c2 == 'h') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "シャ",
+							'i' => "シ",
+							'u' => "シュ",
+							'e' => "シェ",
+							'o' => "ショ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					}else if((c1 == 'c') && (c2 == 'h') && boin(c3)) {
+						r.Append(c3 switch {
+							'a' => "チャ",
+							'i' => "チ",
+							'u' => "チュ",
+							'e' => "チェ",
+							'o' => "チョ",
+							_ => throw new InvalidOperationException(),
+						});
+						s.Skip(3);
+						continue;
+					}
+
 					if((c1 == 'm') && (c2 == 'm') && boin(c3)) {
 						last = c1;
-						r.Append("ん");
+						r.Append("ン");
 						s.Skip(1);
 						continue;
 					} else if((c1 == 'm') && (c2 == 'b') && boin(c3)) {
 						last = c1;
-						r.Append("ん");
+						r.Append("ン");
 						s.Skip(1);
 						continue;
 					} else if((c1 == 'm') && (c2 == 'p') && boin(c3)) {
 						last = c1;
-						r.Append("ん");
+						r.Append("ン");
 						s.Skip(1);
 						continue;
 					}
-
 
 					if(boin(last) && (c1 == 'h')) {
 						last = c1;
@@ -240,115 +374,115 @@ namespace Yarukizero.Net.Sapi.VoicePeakConnect {
 					}) && boin(c2)) {
 						r.Append(c1 switch {
 							'k' => c2 switch {
-								'a' => "か",
-								'i' => "き",
-								'u' => "く",
-								'e' => "け",
-								'o' => "こ",
+								'a' => "カ",
+								'i' => "キ",
+								'u' => "ク",
+								'e' => "ケ",
+								'o' => "コ",
 								_ => throw new InvalidOperationException(),
 							},
 							's' => c2 switch {
-								'a' => "さ",
-								'i' => "し",
-								'u' => "す",
-								'e' => "せ",
-								'o' => "そ",
+								'a' => "サ",
+								'i' => "シ",
+								'u' => "ス",
+								'e' => "セ",
+								'o' => "ソ",
 								_ => throw new InvalidOperationException(),
 							},
 							't' => c2 switch {
-								'a' => "た",
-								'i' => "ち",
-								'u' => "つ",
-								'e' => "て",
-								'o' => "と",
+								'a' => "タ",
+								'i' => "チ",
+								'u' => "ツ",
+								'e' => "テ",
+								'o' => "ト",
 								_ => throw new InvalidOperationException(),
 							},
 							'n' => c2 switch {
-								'a' => "な",
-								'i' => "に",
-								'u' => "ぬ",
-								'e' => "ね",
-								'o' => "の",
+								'a' => "ナ",
+								'i' => "ニ",
+								'u' => "ヌ",
+								'e' => "ネ",
+								'o' => "ノ",
 								_ => throw new InvalidOperationException(),
 							},
 							'h' => c2 switch {
-								'a' => "は",
-								'i' => "ひ",
-								'u' => "ふ",
-								'e' => "へ",
-								'o' => "ほ",
+								'a' => "ハ",
+								'i' => "ヒ",
+								'u' => "フ",
+								'e' => "ヘ",
+								'o' => "ホ",
 								_ => throw new InvalidOperationException(),
 							},
 							'm' => c2 switch {
-								'a' => "ま",
-								'i' => "み",
-								'u' => "む",
-								'e' => "め",
-								'o' => "も",
+								'a' => "マ",
+								'i' => "ミ",
+								'u' => "ム",
+								'e' => "メ",
+								'o' => "モ",
 								_ => throw new InvalidOperationException(),
 							},
 							'y' => c2 switch {
-								'a' => "や",
-								'i' => "い",
-								'u' => "ゆ",
-								'e' => "え",
-								'o' => "よ",
+								'a' => "ヤ",
+								'i' => "イ",
+								'u' => "ユ",
+								'e' => "エ",
+								'o' => "ヨ",
 								_ => throw new InvalidOperationException(),
 							},
 							'r' => c2 switch {
-								'a' => "ら",
-								'i' => "り",
-								'u' => "る",
-								'e' => "れ",
-								'o' => "ろ",
+								'a' => "ラ",
+								'i' => "リ",
+								'u' => "ル",
+								'e' => "レ",
+								'o' => "ロ",
 								_ => throw new InvalidOperationException(),
 							},
 							'w' => c2 switch {
-								'a' => "わ",
-								'i' => "うぃ",
-								'u' => "う",
-								'e' => "うぇ",
-								'o' => "を",
+								'a' => "ワ",
+								'i' => "ウィ",
+								'u' => "ウ",
+								'e' => "ウェ",
+								'o' => "ヲ",
 								_ => throw new InvalidOperationException(),
 							},
 							'g' => c2 switch {
-								'a' => "が",
-								'i' => "ぎ",
-								'u' => "ぐ",
-								'e' => "げ",
-								'o' => "ご",
+								'a' => "ガ",
+								'i' => "ギ",
+								'u' => "グ",
+								'e' => "ゲ",
+								'o' => "ゴ",
 								_ => throw new InvalidOperationException(),
 							},
 							'z' => c2 switch {
-								'a' => "ざ",
-								'i' => "じ",
-								'u' => "ず",
-								'e' => "ぜ",
-								'o' => "ぞ",
+								'a' => "ザ",
+								'i' => "ジ",
+								'u' => "ズ",
+								'e' => "ゼ",
+								'o' => "ゾ",
 								_ => throw new InvalidOperationException(),
 							},
 							'd' => c2 switch {
-								'a' => "だ",
-								'i' => "ぢ",
-								'u' => "づ",
-								'e' => "で",
-								'o' => "ど",
+								'a' => "ダ",
+								'i' => "ヂ",
+								'u' => "ヅ",
+								'e' => "デ",
+								'o' => "ド",
 								_ => throw new InvalidOperationException(),
 							},
 							'b' => c2 switch {
-								'a' => "ば",
-								'i' => "び",
-								'u' => "ぶ",
-								'e' => "べ",
-								'o' => "ぼ",
+								'a' => "バ",
+								'i' => "ビ",
+								'u' => "ブ",
+								'e' => "ベ",
+								'o' => "ボ",
 								_ => throw new InvalidOperationException(),
 							},
 							'p' => c2 switch {
-								'a' => "ぱ",
-								'i' => "ぴ",
-								'u' => "ぷ",
-								'e' => "ぺ",
-								'o' => "ぽ",
+								'a' => "パ",
+								'i' => "ピ",
+								'u' => "プ",
+								'e' => "ペ",
+								'o' => "ポ",
 								_ => throw new InvalidOperationException(),
 							},
 							_ => throw new InvalidOperationException(),
@@ -357,11 +491,11 @@ namespace Yarukizero.Net.Sapi.VoicePeakConnect {
 						continue;
 					} else if((c1 == 'j') && boin(c2)) {
 						r.Append(c1 switch {
-							'a' => "じゃ",
-							'i' => "じぃ",
-							'u' => "じゅ",
-							'e' => "じぇ",
-							'o' => "じょ",
+							'a' => "ジャ",
+							'i' => "ジイ",
+							'u' => "ジュ",
+							'e' => "ジェ",
+							'o' => "ジョ",
 							_ => false,
 						});
 						s = s.Skip(2);
@@ -376,32 +510,32 @@ namespace Yarukizero.Net.Sapi.VoicePeakConnect {
 
 
 					r.Append(c1 switch {
-						'a' => "あ",
-						'b' => "べ",
-						'c' => "く",
-						'd' => "で",
-						'e' => "え",
-						'f' => "ふ",
-						'g' => "ぐ",
-						'h' => "ち",
-						'i' => "い",
-						'j' => "じ",
-						'k' => "け",
-						'l' => "る",
-						'm' => "む",
-						'n' => "ん",
-						'o' => "お",
-						'p' => "ぷ",
-						'q' => "く",
-						'r' => "ら",
-						's' => "す",
-						't' => "て",
-						'u' => "う",
+						'a' => "ア",
+						'b' => "ベ",
+						'c' => "グ",
+						'd' => "デ",
+						'e' => "エ",
+						'f' => "フ",
+						'g' => "グ",
+						'h' => "チ",
+						'i' => "イ",
+						'j' => "ジ",
+						'k' => "ケ",
+						'l' => "ル",
+						'm' => "ム",
+						'n' => "ン",
+						'o' => "オ",
+						'p' => "プ",
+						'q' => "ク",
+						'r' => "ラ",
+						's' => "ス",
+						't' => "テ",
+						'u' => "ウ",
 						'v' => "ヴ",
-						'w' => "う",
+						'w' => "ウ",
 						'x' => "",
-						'y' => "い",
-						'z' => "じ",
+						'y' => "イ",
+						'z' => "ジ",
 
 						'-' => "ー",
 						_ => " ", // 区切るためスペースを入れる
