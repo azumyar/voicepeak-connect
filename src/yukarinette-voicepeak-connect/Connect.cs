@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -21,8 +22,6 @@ namespace Yarukizero.Net.Yularinette.VoicePeakConnect {
 		private static extern IntPtr LoadLibrary(string lpLibFileName);
 		[DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
 		static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
-		[DllImport("user32.dll", CharSet = CharSet.Unicode)]
-		private static extern IntPtr FindWindow(string pClassName, string pWindowName);
 
 		[DllImport("user32.dll")]
 		private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
@@ -175,11 +174,19 @@ namespace Yarukizero.Net.Yularinette.VoicePeakConnect {
 
 
 		public bool BeginVoicePeak() {
-			this.hVoicePeak = FindWindow(null, "VOICEPEAK");
-			if(this.hVoicePeak == IntPtr.Zero) {
+			var p = System.Diagnostics.Process.GetProcesses().Where(x => {
+				try {
+					return x.MainModule?.ModuleName?.ToLower() == "voicepeak.exe";
+				}
+				catch(Exception e) when((e is Win32Exception) || (e is InvalidOperationException)) {
+					return false;
+				}
+			}).FirstOrDefault();
+			if(p == null) {
 				return false;
 			}
 
+			this.hVoicePeak = p.MainWindowHandle;
 			GetWindowRect(this.hVoicePeak, out var rc);
 			SetWindowPos(this.hVoicePeak, IntPtr.Zero, rc.left, rc.top, 1024, 877, 0);
 			GetClientRect(this.hVoicePeak, out rc);

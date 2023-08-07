@@ -21,6 +21,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using Lucene.Net.Analysis.Ja.Dict;
+using System.ComponentModel;
 
 namespace Yarukizero.Net.VocePeakConnect.Lab;
 
@@ -235,26 +236,32 @@ class Program {
 
 	[STAThread]
 	static void Main(string[] args) {
-		English2Kana.Init();
 		/*
+		English2Kana.Init();
 		Console.WriteLine(English2Kana.Convert("aioueo"));
-		Console.WriteLine(English2Kana.Convert("babibubebo"));
-		Console.WriteLine(English2Kana.Convert("createwindow"));
-		Console.WriteLine(English2Kana.Convert("registerwindowex"));
-		Console.WriteLine(English2Kana.Convert("test"));
 		Console.WriteLine(English2Kana.Convert("testなのだ"));
 		Console.WriteLine(English2Kana.Convert("ずんだもんtestなのだ"));
-		*/
 		Console.WriteLine(English2Kana.Convert("VoicePeak"));
-		Console.WriteLine(English2Kana.Convert("voicepeak"));
-		Console.WriteLine(English2Kana.Convert("voiceroid"));
 		Console.ReadLine();
+		*/
+		Impl01();
 	}
 
 	static void Impl01() {
 		IntPtr.Size.WriteLine("ポインタサイズ={0}");
-
-		var target = FindWindow(null, "VOICEPEAK");
+		var p = System.Diagnostics.Process.GetProcesses().Where(x => {
+			try {
+				return x.MainModule?.ModuleName?.ToLower() == "voicepeak.exe";
+			}
+			catch(Exception e) when ((e is Win32Exception) || (e is InvalidOperationException)) {
+				return false;
+			}
+		}).FirstOrDefault();
+		if(p == null) {
+			return;
+		}
+		var target = p.MainWindowHandle;
+		Console.WriteLine(p.MainWindowTitle);
 		//var tidMe = GetCurrentThreadId();
 		var tidTarget = GetWindowThreadProcessId(target, out var pid);
 
