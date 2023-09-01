@@ -813,6 +813,7 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 				registryKey.SetValue(KeyAudioSolo, audioSolo);
 				registryKey.SetValue(KeyAudioDevice, "");
 				registryKey.SetValue(KeyAudioVolume, "1.0");
+				registryKey.SetValue(KeyConvertKana, "1");
 			}
 			using(var registryKey = Registry.LocalMachine.CreateSubKey($@"{entry}\{prefix}-{safePath(name)}\Attributes")) {
 				registryKey.SetValue("Age", "Teen"); // とれないのでここはてきとー
