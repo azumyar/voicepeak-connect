@@ -786,7 +786,13 @@ public class VoicePeakConnectTTSEngine : IVoicePeakConnectTTSEngine {
 			});
 			if(p != null) {
 				p.WaitForExit();
-				narrators = p.StandardOutput.ReadToEnd();
+				using var ms = new MemoryStream();
+				var b = new byte[1024];
+				var r = 0;
+				while(0 < (r = p.StandardOutput.BaseStream.Read(b, 0, b.Length))) {
+					ms.Write(b, 0, r);
+				}
+				narrators = Encoding.UTF8.GetString(ms.ToArray());
 			}
 		}
 		catch {
