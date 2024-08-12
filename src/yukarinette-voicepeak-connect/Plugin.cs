@@ -59,6 +59,10 @@ namespace Yarukizero.Net.Yularinette.VoicePeakConnect {
 			}
 		}
 
+		public override void SpeechRecognitionStop() {
+			con.EndCaptureVoicePeak();
+		}
+		
 		public override void Speech(string text) {
 			try {
 				con.Speech(text);
