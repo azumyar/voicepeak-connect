@@ -2,7 +2,7 @@
 
 voicepeak-connect のゆかりねっとプラグイン実装です。  
 Win32 APIを用いて連携するので現時点でCLIより高速に動作すると思います。  
-https://install.appcenter.ms/users/azumyar/apps/yukerinette-voicepeak-plugin/distribution_groups/canary
+https://github.com/azumyar/voicepeak-connect/releases
 
 ## インストール
 ゆかりねっと(x64)のインストールフォルダ\Pluginsにアーカイブを解凍してでてきたyukarinette-voicepeak-connect.dllとYarukizero.Net.VoicePeakConnectフォルダをコピーしてください。
@@ -20,6 +20,5 @@ https://install.appcenter.ms/users/azumyar/apps/yukerinette-voicepeak-plugin/dis
 デッドロック防止は外部プロセスと連携するため意図しない動きをした場合ゆかりねっとがフリーズするのを防止するために設けられています。読ませたい長文との兼ね合いで設定してください。
 
 ## 注意
-赤枠の部分は見えている状態にしてください。ここを隠すと連携に失敗します。  
-長文読み込みなどでテキストボックスが見切れてしまいかつそのための領域を画面に確保できない場合iniファイルのwaittime_wmpaintで待ち時間を変更してください。単位はミリ秒です。  
+赤枠の部分は見えている状態にしてください。ここを隠すと連携に失敗します。   
 ![注意](md-img/yukarinette01.png)  
