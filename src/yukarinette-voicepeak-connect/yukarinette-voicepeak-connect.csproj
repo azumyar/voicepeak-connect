@@ -4,7 +4,7 @@
     <TargetFramework>net48</TargetFramework>
     <RootNamespace>Yarukizero.Net.Yularinette.VoicePeakConnect</RootNamespace>
     <LangVersion>10</LangVersion>
-    <VersionPrefix>0.10.1</VersionPrefix>
+    <VersionPrefix>0.11</VersionPrefix>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
