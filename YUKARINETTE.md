@@ -5,7 +5,8 @@ Win32 APIを用いて連携するので現時点でCLIより高速に動作す�
 https://github.com/azumyar/voicepeak-connect/releases
 
 ## インストール
-ゆかりねっと(x64)のインストールフォルダ\Pluginsにアーカイブを解凍してでてきたyukarinette-voicepeak-connect.dllとYarukizero.Net.VoicePeakConnectフォルダをコピーしてください。
+ゆかりねっと(x64)のインストールフォルダ\Pluginsにアーカイブを解凍してでてきたyukarinette-voicepeak-connect.dllとYarukizero.Net.VoicePeakConnectフォルダをコピーしてください。  
+別途.NET 8デスクトップランタイムをインストールしてください。
 
 ## 使用方法
 1. VOICEPEAKを起動します
