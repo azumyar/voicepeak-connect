@@ -248,7 +248,7 @@ namespace Yarukizero.Net.Yularinette.VoicePeakConnect {
 
 			this.hVoicePeak = p.MainWindowHandle;
 			GetWindowRect(this.hVoicePeak, out var rc);
-			SetWindowPos(this.hVoicePeak, IntPtr.Zero, rc.left, rc.top, 1024, 877, 0);
+			SetWindowPos(this.hVoicePeak, IntPtr.Zero, rc.left, rc.top, 1100, 877, 0);
 			GetClientRect(this.hVoicePeak, out rc);
 			this.voicePeakWidth = rc.right - rc.left;
 
@@ -323,8 +323,8 @@ namespace Yarukizero.Net.Yularinette.VoicePeakConnect {
 			Thread.Sleep(50);
 			// フォーカスを削除してカーソルのWM_PAINTを抑制する
 			//SendMessage(this.hVoicePeak, WM_KILLFOCUS, 0, 0);
-			click(this.hVoicePeak, this.voicePeakWidth / 2 + 125, 20);
-			click(this.hVoicePeak, this.voicePeakWidth / 2 + 165, 20);
+			click(this.hVoicePeak, this.voicePeakWidth / 2 + 160, 20);
+			click(this.hVoicePeak, this.voicePeakWidth / 2 + 200, 20);
 			//SendMessage(this.hVoicePeak, WM_IME_CHAR, (IntPtr)VK_SPACE, IntPtr.Zero);
 
 			{
